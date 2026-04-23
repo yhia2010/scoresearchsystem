@@ -1,0 +1,811 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>教师后台 - 新安中学成绩管理系统</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1a5c3a;
+      --primary-light: #2e8b57;
+      --primary-dark: #0f3d26;
+      --secondary: #3aaa6e;
+      --accent: #f59e0b;
+      --success: #10b981;
+      --danger: #ef4444;
+      --bg: #f0f4f2;
+      --bg-card: #ffffff;
+      --text: #0f1a12;
+      --text-muted: #3d5a47;
+      --border: #c8dfd1;
+      --shadow: 0 4px 24px rgba(26,92,58,0.10);
+      --shadow-lg: 0 12px 40px rgba(26,92,58,0.15);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+    }
+    body { font-family: 'Noto Sans SC', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    .header { background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%); color: #fff; padding: 20px 32px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; box-shadow: var(--shadow); }
+    .header h1 { font-size: 1.4rem; display: flex; align-items: center; gap: 10px; }
+    .header-right { display: flex; align-items: center; gap: 12px; }
+    .btn { padding: 8px 16px; border: none; border-radius: var(--radius-sm); cursor: pointer; font-size: 0.9rem; font-weight: 500; transition: all 0.2s; display: inline-flex; align-items: center; gap: 6px; font-family: inherit; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: var(--border); color: var(--text); }
+    .btn-secondary:hover { background: #b8d4c0; }
+    .btn-success { background: var(--success); color: #fff; }
+    .btn-success:hover { background: #059669; }
+    .btn-danger { background: var(--danger); color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-warning { background: var(--accent); color: #fff; }
+    .btn-warning:hover { background: #d97706; }
+    .btn-full { width: 100%; justify-content: center; }
+    .main { flex: 1; padding: 24px; max-width: 1400px; margin: 0 auto; width: 100%; }
+    .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .stat-card { background: var(--bg-card); border-radius: var(--radius); padding: 20px; box-shadow: var(--shadow); }
+    .stat-label { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px; }
+    .stat-value { font-size: 1.8rem; font-weight: 700; color: var(--primary); }
+    .tabs { display: flex; gap: 4px; background: var(--bg-card); padding: 6px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; flex-wrap: wrap; }
+    .tab { padding: 10px 20px; border: none; background: transparent; cursor: pointer; font-size: 0.95rem; font-weight: 500; color: var(--text-muted); border-radius: var(--radius-sm); transition: all 0.2s; font-family: inherit; }
+    .tab.active { background: var(--primary); color: #fff; }
+    .tab:hover:not(.active) { background: var(--border); }
+    .admin-tab-panel { display: none; }
+    .admin-tab-panel.active { display: block; }
+    .section-card { background: var(--bg-card); border-radius: var(--radius); padding: 24px; box-shadow: var(--shadow); margin-bottom: 20px; }
+    .section-card h3 { font-size: 1.1rem; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; color: var(--primary); }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 0.85rem; font-weight: 500; margin-bottom: 6px; color: var(--text-muted); }
+    .form-input { width: 100%; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.95rem; font-family: inherit; transition: border 0.2s; }
+    .form-input:focus { outline: none; border-color: var(--primary); }
+    .form-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+    .data-table-wrap { overflow-x: auto; border-radius: var(--radius-sm); border: 1px solid var(--border); }
+    table { width: 100%; border-collapse: collapse; }
+    th { background: var(--primary); color: #fff; padding: 12px 14px; text-align: left; font-weight: 600; font-size: 0.9rem; white-space: nowrap; }
+    td { padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 0.9rem; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #f8faf9; }
+    .search-bar { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 14px; }
+    .action-btns { display: flex; gap: 6px; }
+    .action-btn { padding: 4px 10px; border: none; border-radius: var(--radius-xs); cursor: pointer; font-size: 0.8rem; font-family: inherit; }
+    .action-btn.edit { background: var(--accent); color: #fff; }
+    .action-btn.delete { background: var(--danger); color: #fff; }
+    .empty-state { text-align: center; padding: 40px; color: var(--text-muted); }
+    .upload-zone { border: 2px dashed var(--border); border-radius: var(--radius); padding: 40px; text-align: center; cursor: pointer; transition: all 0.2s; }
+    .upload-zone:hover { border-color: var(--primary); background: #f8faf9; }
+    .upload-zone.drag { border-color: var(--primary); background: #e8f5ed; }
+    .upload-zone svg { width: 48px; height: 48px; color: var(--text-muted); margin-bottom: 12px; }
+    .upload-zone p { font-size: 1rem; margin-bottom: 4px; }
+    .upload-zone span { font-size: 0.85rem; color: var(--text-muted); }
+    .progress-bar-wrap { background: var(--border); border-radius: var(--radius-sm); height: 8px; overflow: hidden; }
+    .progress-bar { background: var(--primary); height: 100%; transition: width 0.3s; }
+    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+    .template-info { background: #f8faf9; border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px; font-size: 0.9rem; line-height: 1.7; color: var(--text-muted); }
+    .template-info strong { color: var(--primary); }
+    .template-info code { background: var(--border); padding: 2px 6px; border-radius: 4px; font-size: 0.85rem; }
+    .alert { padding: 10px 14px; border-radius: var(--radius-sm); margin-top: 10px; font-size: 0.9rem; display: none; }
+    .alert.show { display: block; }
+    .alert-info { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .alert-success { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
+    .alert-error { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .modal { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; align-items: center; justify-content: center; padding: 20px; }
+    .modal.show { display: flex; }
+    .modal-content { background: var(--bg-card); border-radius: var(--radius); padding: 28px; max-width: 500px; width: 100%; max-height: 90vh; overflow-y: auto; }
+    .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .modal-header h3 { font-size: 1.2rem; color: var(--primary); }
+    .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: var(--text-muted); padding: 4px 8px; }
+    .modal-close:hover { color: var(--danger); }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+    .footer { text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.85rem; }
+    .info-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: var(--radius-sm); padding: 12px; margin-bottom: 16px; font-size: 0.85rem; color: #92400e; }
+    .info-box code { background: #fef3c7; padding: 2px 6px; border-radius: 4px; }
+    @media (max-width: 768px) {
+      .header { padding: 16px; }
+      .main { padding: 16px; }
+      .stats-grid { grid-template-columns: repeat(2, 1fr); }
+      .form-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>🎓 新安中学成绩管理系统 - 教师后台</h1>
+    <div class="header-right">
+      <span id="current-time" style="font-size:0.9rem; opacity:0.9;"></span>
+      <button class="btn btn-secondary" onclick="location.href='login.html?logout=1'">退出登录</button>
+    </div>
+  </div>
+
+  <div class="main">
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-label">学生总数</div><div class="stat-value" id="stat-students">0</div></div>
+      <div class="stat-card"><div class="stat-label">成绩记录</div><div class="stat-value" id="stat-scores">0</div></div>
+      <div class="stat-card"><div class="stat-label">考试次数</div><div class="stat-value" id="stat-exams">0</div></div>
+      <div class="stat-card"><div class="stat-label">学年数</div><div class="stat-value" id="stat-years">0</div></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('scores')">📊 成绩管理</button>
+      <button class="tab" onclick="switchTab('students')">👥 学生管理</button>
+      <button class="tab" onclick="switchTab('import')">📥 数据导入</button>
+      <button class="tab" onclick="switchTab('export')">📤 数据导出</button>
+      <button class="tab" onclick="switchTab('settings')">⚙️ 设置</button>
+    </div>
+
+    <!-- SCORES TAB -->
+    <div id="tab-scores" class="admin-tab-panel active">
+      <div class="section-card">
+        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>成绩列表</h3>
+        <div class="search-bar">
+          <input type="text" id="score-search" class="form-input" placeholder="搜索姓名或考试名称..." style="max-width:200px;">
+          <select id="score-year-filter" class="form-input" style="max-width:150px;"><option value="">全部学年</option></select>
+          <button class="btn btn-primary" onclick="loadScores()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>搜索</button>
+          <button class="btn btn-success" onclick="showAddScoreModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>添加成绩</button>
+        </div>
+        <div id="score-alert" class="alert"></div>
+        <div id="scores-list"><div class="empty-state"><p>暂无成绩记录</p></div></div>
+      </div>
+    </div>
+
+    <!-- STUDENTS TAB -->
+    <div id="tab-students" class="admin-tab-panel">
+      <div class="section-card">
+        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>添加学生</h3>
+        <form id="student-form" onsubmit="addStudent(); return false;">
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">姓名 *</label><input type="text" id="student-name" class="form-input" required></div>
+            <div class="form-group"><label class="form-label">班级</label><input type="text" id="student-class" class="form-input" placeholder="如：15班"></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">身份证号码</label><input type="text" id="student-idnum" class="form-input" placeholder="（可选）"></div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-full" style="margin-top:16px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 5v14M5 12h14"/></svg>添加学生</button>
+        </form>
+        <div id="student-alert" class="alert"></div>
+      </div>
+      <div class="section-card">
+        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>学生列表</h3>
+        <div class="search-bar">
+          <input type="text" id="student-search" class="form-input" placeholder="搜索姓名或身份证...">
+          <select id="student-class-filter" class="form-input" style="max-width:150px;"><option value="">全部班级</option></select>
+          <button class="btn btn-secondary" onclick="loadStudents()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>搜索</button>
+        </div>
+        <div id="students-list"><div class="empty-state"><p>暂无学生记录</p></div></div>
+      </div>
+    </div>
+
+    <!-- IMPORT TAB -->
+    <div id="tab-import" class="admin-tab-panel">
+      <div class="section-card">
+        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>导入学生数据</h3>
+        <div class="info-box">
+          <strong>Excel 格式要求：</strong>须包含：<code>姓名</code>（必填）&nbsp;<code>班级</code>&nbsp;<code>身份证号码</code>
+        </div>
+        <div id="student-import-alert" class="alert"></div>
+        <div class="upload-zone" id="student-upload-zone" onclick="document.getElementById('student-file-input').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p>点击或拖拽学生表格到此处</p>
+          <span>支持 .xlsx / .xls / .csv 格式</span>
+        </div>
+        <input type="file" id="student-file-input" accept=".xlsx,.xls,.csv,.json" style="display:none;">
+        <div id="student-import-progress" style="display:none; margin-top:12px;">
+          <div class="progress-bar-wrap"><div class="progress-bar" id="student-progress-bar" style="width:0%"></div></div>
+          <p id="student-progress-text" style="font-size:0.85rem; margin-top:6px;">准备中...</p>
+        </div>
+        <div id="student-import-preview"></div>
+      </div>
+      <div class="section-card">
+        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="3" x2="9" y2="21"/></svg>导入成绩数据</h3>
+        <div class="info-box">
+          <strong>Excel 格式要求：</strong>须包含：<code>姓名</code>&nbsp;<code>班级</code>&nbsp;<code>学年</code>&nbsp;<code>考试名称</code>&nbsp;<code>总分</code>&nbsp;及各科目分数
+        </div>
+        <div id="score-import-alert" class="alert"></div>
+        <div class="upload-zone" id="score-upload-zone" onclick="document.getElementById('score-file-input').click()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          <p>点击或拖拽成绩表格到此处</p>
+          <span>支持 .xlsx / .xls / .csv 格式</span>
+        </div>
+        <input type="file" id="score-file-input" accept=".xlsx,.xls,.csv,.json" style="display:none;">
+        <div id="score-import-progress" style="display:none; margin-top:12px;">
+          <div class="progress-bar-wrap"><div class="progress-bar" id="score-progress-bar" style="width:0%"></div></div>
+          <p id="score-progress-text" style="font-size:0.85rem; margin-top:6px;">准备中...</p>
+        </div>
+        <div id="score-import-preview"></div>
+      </div>
+    </div>
+
+    <!-- EXPORT TAB -->
+    <div id="tab-export" class="admin-tab-panel">
+      <div class="section-card">
+        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出数据</h3>
+        <div class="btn-group">
+          <button class="btn btn-primary" onclick="exportData('students')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出学生数据</button>
+          <button class="btn btn-success" onclick="exportData('scores')"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出成绩数据</button>
+          <button class="btn btn-warning" onclick="exportQueryData()" style="background:#f59e0b; color:#fff;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>导出查询数据（用于学生查询页）</button>
+        </div>
+        <div class="template-info">
+          <strong>📥 使用说明</strong>
+          <p>1. 在「数据导入」标签页上传 Excel 导入数据<br>
+          2. 点击上方「导出查询数据」按钮下载 JSON 文件<br>
+          3. 将 <code>students.json</code> 和 <code>scores.json</code> 上传到查询页面同目录（GitHub 仓库）<br>
+          4. 学生访问查询页即可看到最新成绩</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETTINGS TAB -->
+    <div id="tab-settings" class="admin-tab-panel">
+      <div class="section-card">
+        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>修改密码</h3>
+        <div class="form-group"><label class="form-label">新密码</label><input type="password" id="new-password" class="form-input" placeholder="至少6位"></div>
+        <div class="form-group"><label class="form-label">确认密码</label><input type="password" id="confirm-password" class="form-input" placeholder="再次输入新密码"></div>
+        <button class="btn btn-primary" onclick="changePassword()" style="margin-top:10px;">确认修改</button>
+        <div id="settings-alert" class="alert"></div>
+      </div>
+      <div class="section-card">
+        <h3><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>数据管理</h3>
+        <p style="color:var(--danger); font-size:0.9rem; margin-bottom:12px;">⚠️ 危险操作：清空后所有数据将无法恢复！</p>
+        <button class="btn btn-danger" onclick="clearAllData()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>清空所有数据</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Score Modal -->
+  <div id="score-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header"><h3>添加成绩</h3><button class="modal-close" onclick="closeModal('score-modal')">&times;</button></div>
+      <form onsubmit="addScore(); return false;">
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">学生姓名 *</label><input type="text" id="score-student-name" class="form-input" required></div>
+          <div class="form-group"><label class="form-label">学年 *</label><input type="text" id="score-year" class="form-input" placeholder="如：2023-2024" required></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">考试名称 *</label><input type="text" id="score-exam" class="form-input" placeholder="如：期中考试" required></div>
+          <div class="form-group"><label class="form-label">班级</label><input type="text" id="score-class" class="form-input" placeholder="如：15班"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label class="form-label">总分</label><input type="number" id="score-total" class="form-input" placeholder="自动计算" oninput="calcTotal()"></div>
+          <div class="form-group"><label class="form-label">班级排名</label><input type="number" id="score-class-rank" class="form-input"></div>
+        </div>
+        <div class="form-group"><label class="form-label">年级排名</label><input type="number" id="score-grade-rank" class="form-input"></div>
+        <div class="modal-footer"><button type="button" class="btn btn-secondary" onclick="closeModal('score-modal')">取消</button><button type="submit" class="btn btn-success">保存</button></div>
+      </form>
+      <div id="score-modal-alert" class="alert"></div>
+    </div>
+  </div>
+
+  <div class="footer"><p>新安中学2023级高三学生历年成绩查询系统 | 博学笃志，明礼诚信 | 教师后台</p></div>
+
+  <script>
+    // Auth check
+    const STORAGE_AUTH = 'xinan_admin_auth';
+    const STORAGE_PWD = 'xinan_admin_password';
+    const DEFAULT_PASSWORD = 'xinanscore2023';
+    if (!localStorage.getItem(STORAGE_PWD)) localStorage.setItem(STORAGE_PWD, DEFAULT_PASSWORD);
+    if (localStorage.getItem(STORAGE_AUTH) !== 'authenticated') {
+      window.location.href = 'login.html';
+    }
+
+    // IndexedDB Storage
+    const DB_NAME = 'XinanScoreDB_v2';
+    const DB_VERSION = 1;
+    const STORE_STUDENTS = 'students';
+    const STORE_SCORES = 'scores';
+    let db = null;
+
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => { db = request.result; resolve(db); };
+        request.onupgradeneeded = e => {
+          const database = e.target.result;
+          if (!database.objectStoreNames.contains(STORE_STUDENTS)) {
+            database.createObjectStore(STORE_STUDENTS, { keyPath: '_id', autoIncrement: true });
+          }
+          if (!database.objectStoreNames.contains(STORE_SCORES)) {
+            database.createObjectStore(STORE_SCORES, { keyPath: '_id', autoIncrement: true });
+          }
+        };
+      });
+    }
+
+    function dbGetAll(storeName) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readonly');
+        const store = tx.objectStore(storeName);
+        const req = store.getAll();
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function dbClear(storeName) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        const req = store.clear();
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function dbPut(storeName, items) {
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(storeName, 'readwrite');
+        const store = tx.objectStore(storeName);
+        items.forEach(item => store.put(item));
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    // Global data
+    let allStudents = [];
+    let allScores = [];
+    let nextStudentId = 1;
+    let nextScoreId = 1;
+
+    // Init
+    async function init() {
+      try {
+        await openDB();
+        await loadFromStorage();
+        setupEventListeners();
+        setupFileUpload();
+        updateStats();
+        populateYearFilter();
+        populateClassFilter();
+        populateStudentNameList();
+        loadScores();
+        loadStudents();
+        updateTime();
+      } catch (e) {
+        console.error('Init error:', e);
+        alert('初始化失败：' + e.message);
+      }
+    }
+
+    async function loadFromStorage() {
+      try {
+        allStudents = await dbGetAll(STORE_STUDENTS);
+        allScores = await dbGetAll(STORE_SCORES);
+        if (allStudents.length) nextStudentId = Math.max(...allStudents.map(x => x._id)) + 1;
+        if (allScores.length) nextScoreId = Math.max(...allScores.map(x => x._id)) + 1;
+      } catch (e) {
+        console.error('Load error:', e);
+        allStudents = [];
+        allScores = [];
+      }
+    }
+
+    async function saveStudents() { await dbPut(STORE_STUDENTS, allStudents); }
+    async function saveScores() { await dbPut(STORE_SCORES, allScores); }
+
+    // UI functions
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelector(`.tab[onclick*="${tab}"]`).classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    function updateTime() {
+      const now = new Date();
+      document.getElementById('current-time').textContent = now.toLocaleString('zh-CN');
+      setTimeout(updateTime, 1000);
+    }
+
+    function showAlert(msg, type, id) {
+      const el = document.getElementById(id || 'score-alert');
+      if (!el) return;
+      el.textContent = msg; el.className = `alert alert-${type} show`;
+      setTimeout(() => el.classList.remove('show'), 5000);
+    }
+
+    // Stats
+    function updateStats() {
+      const years = [...new Set(allScores.map(s => s.year).filter(Boolean))];
+      const exams = [...new Set(allScores.map(s => s.examName).filter(Boolean))];
+      document.getElementById('stat-students').textContent = allStudents.length;
+      document.getElementById('stat-scores').textContent = allScores.length;
+      document.getElementById('stat-exams').textContent = exams.length;
+      document.getElementById('stat-years').textContent = years.length;
+    }
+
+    function populateYearFilter() {
+      const years = [...new Set(allScores.map(s => s.year).filter(Boolean))].sort().reverse();
+      const f = document.getElementById('score-year-filter');
+      if (!f) return;
+      f.innerHTML = '<option value="">全部学年</option>';
+      years.forEach(y => { f.innerHTML += `<option value="${y}">${y}</option>`; });
+    }
+
+    function populateClassFilter() {
+      const classes = [...new Set(allStudents.map(s => s.className).filter(Boolean))].sort();
+      const f = document.getElementById('student-class-filter');
+      if (!f) return;
+      f.innerHTML = '<option value="">全部班级</option>';
+      classes.forEach(c => { f.innerHTML += `<option value="${c}">${c}</option>`; });
+    }
+
+    function populateStudentNameList() {
+      // For autocomplete if needed
+    }
+
+    // Student CRUD
+    function loadStudents() {
+      const search = document.getElementById('student-search')?.value.toLowerCase() || '';
+      const classFilter = document.getElementById('student-class-filter')?.value || '';
+      let filtered = allStudents;
+      if (classFilter) filtered = filtered.filter(s => s.className === classFilter);
+      if (search) filtered = filtered.filter(s => (s.name||'').toLowerCase().includes(search) || (s.idNumber||'').includes(search));
+      const container = document.getElementById('students-list');
+      if (!filtered.length) { container.innerHTML = '<div class="empty-state"><p>暂无学生记录</p></div>'; return; }
+      let html = '<div class="data-table-wrap"><table><thead><tr><th>姓名</th><th>班级</th><th>身份证号</th><th>操作</th></tr></thead><tbody>';
+      filtered.slice(0, 50).forEach(s => {
+        html += `<tr><td><strong>${s.name}</strong></td><td>${s.className||'-'}</td><td>${s.idNumber||'-'}</td><td><button class="action-btn delete" onclick="deleteStudent('${s._id}')">删除</button></td></tr>`;
+      });
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    function addStudent() {
+      const name = document.getElementById('student-name').value.trim();
+      const className = document.getElementById('student-class').value.trim();
+      const idNumber = document.getElementById('student-idnum').value.trim();
+      if (!name) { showAlert('请输入学生姓名', 'error', 'student-alert'); return; }
+      const dup = allStudents.find(s => (idNumber && s.idNumber === idNumber) || (s.name === name));
+      if (dup) { showAlert('该学生已存在', 'error', 'student-alert'); return; }
+      allStudents.push({ _id: nextStudentId++, name, className, idNumber, createdAt: new Date().toISOString() });
+      saveStudents().then(() => {
+        updateStats(); populateClassFilter(); loadStudents();
+        document.getElementById('student-form').reset();
+        showAlert('学生添加成功！', 'success', 'student-alert');
+      });
+    }
+
+    function deleteStudent(id) {
+      if (!confirm('确定要删除该学生吗？')) return;
+      allStudents = allStudents.filter(s => s._id != id);
+      saveStudents().then(() => { updateStats(); populateClassFilter(); loadStudents(); showAlert('学生已删除', 'success'); });
+    }
+
+    // Score CRUD
+    function loadScores() {
+      const search = document.getElementById('score-search')?.value.toLowerCase() || '';
+      const yearFilter = document.getElementById('score-year-filter')?.value || '';
+      let filtered = allScores;
+      if (yearFilter) filtered = filtered.filter(s => s.year === yearFilter);
+      if (search) filtered = filtered.filter(s => (s.studentName||'').toLowerCase().includes(search) || (s.examName||'').toLowerCase().includes(search));
+      filtered.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      const container = document.getElementById('scores-list');
+      if (!filtered.length) { container.innerHTML = '<div class="empty-state"><p>暂无成绩记录</p></div>'; return; }
+      let html = '<div class="data-table-wrap"><table><thead><tr><th>学生</th><th>班级</th><th>考试</th><th>学年</th><th>总分</th><th>操作</th></tr></thead><tbody>';
+      filtered.slice(0, 50).forEach(s => {
+        html += `<tr><td><strong>${s.studentName}</strong></td><td>${s.className||'-'}</td><td>${s.examName||'-'}</td><td>${s.year||'-'}</td><td><strong>${s.totalScore||0}</strong></td><td><button class="action-btn delete" onclick="deleteScore('${s._id}')">删除</button></td></tr>`;
+      });
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    function showAddScoreModal() {
+      document.getElementById('score-modal').classList.add('show');
+      document.getElementById('score-student-name').value = '';
+      document.getElementById('score-year').value = '';
+      document.getElementById('score-exam').value = '';
+      document.getElementById('score-class').value = '';
+      document.getElementById('score-total').value = '';
+      document.getElementById('score-class-rank').value = '';
+      document.getElementById('score-grade-rank').value = '';
+    }
+
+    function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+
+    function addScore() {
+      const studentName = document.getElementById('score-student-name').value.trim();
+      const examName = document.getElementById('score-exam').value.trim();
+      const year = document.getElementById('score-year').value.trim();
+      const className = document.getElementById('score-class').value.trim();
+      const totalScore = parseFloat(document.getElementById('score-total').value) || 0;
+      const classRank = document.getElementById('score-class-rank').value;
+      const gradeRank = document.getElementById('score-grade-rank').value;
+      if (!studentName || !examName || !year) { showAlert('请填写必填项', 'error', 'score-modal-alert'); return; }
+      allScores.push({ _id: nextScoreId++, studentName, examName, year, className, totalScore, classRank, gradeRank, createdAt: new Date().toISOString() });
+      saveScores().then(() => {
+        updateStats(); populateYearFilter(); loadScores();
+        closeModal('score-modal');
+        showAlert('成绩添加成功！', 'success');
+      });
+    }
+
+    function deleteScore(id) {
+      if (!confirm('确定要删除该成绩记录吗？')) return;
+      allScores = allScores.filter(s => s._id != id);
+      saveScores().then(() => { updateStats(); populateYearFilter(); loadScores(); showAlert('成绩已删除', 'success'); });
+    }
+
+    // Excel import
+    function parseExcelFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const wb = XLSX.read(data, { type: 'array', cellDates: true });
+            const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+            resolve(rows);
+          } catch (err) { reject(err); }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    function setupDropZone(zoneId, inputId, handler) {
+      const zone = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+      zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag'); const f = e.dataTransfer.files[0]; if (f) handler(f); });
+      input.addEventListener('change', e => { const f = e.target.files[0]; if (f) handler(f); input.value = ''; });
+    }
+
+    function setupFileUpload() {
+      setupDropZone('student-upload-zone', 'student-file-input', handleStudentFile);
+      setupDropZone('score-upload-zone', 'score-file-input', handleScoreFile);
+    }
+
+    async function handleStudentFile(file) {
+      try {
+        showAlert('正在解析文件...', 'info', 'student-import-alert');
+        const rows = await parseExcelFile(file);
+        const normalized = rows.map(r => ({
+          name: String(r['姓名'] || r['name'] || '').trim().replace(/\s+/g, ' '),
+          idNumber: String(r['身份证号码'] || r['身份证号'] || r['idNumber'] || '').trim().replace(/\s+/g, ''),
+          className: String(r['班级'] || r['class'] || '').trim().replace(/\s+/g, ' '),
+        })).filter(r => r.name);
+
+        // 检测身份证号冲突：两个不同姓名用了同一个身份证号
+        const idMap = {};
+        const dupIdNames = [];
+        normalized.forEach(item => {
+          if (item.idNumber) {
+            if (!idMap[item.idNumber]) idMap[item.idNumber] = [];
+            idMap[item.idNumber].push(item.name);
+          }
+        });
+        for (const [id, names] of Object.entries(idMap)) {
+          if (names.length > 1) {
+            const uniqueNames = [...new Set(names)];
+            if (uniqueNames.length > 1) {
+              dupIdNames.push(id + ': ' + uniqueNames.join(', '));
+              // 清空冲突身份证号，改为按姓名+班级去重
+              normalized.forEach(item => {
+                if (item.idNumber === id) item.idNumber = '';
+              });
+            }
+          }
+        }
+        if (!normalized.length) { showAlert('未识别到有效的姓名列', 'error', 'student-import-alert'); return; }
+        const dupNote = dupIdNames.length ? '\n注意：以下身份证号被多人使用，已清空改为姓名匹配：' + dupIdNames.join('；') : '';
+        window._pendingStudentData = normalized;
+        showStudentPreview(normalized, file.name);
+        showAlert(`已解析 ${normalized.length} 名学生${dupNote}`, 'success', 'student-import-alert');
+      } catch (err) { showAlert('文件解析失败：' + err.message, 'error', 'student-import-alert'); }
+    }
+
+    function showStudentPreview(data, filename) {
+      const preview = document.getElementById('student-import-preview');
+      preview.innerHTML = `<div style="margin-top:16px; border:1px solid var(--border); border-radius:10px; overflow:hidden;">
+        <div style="background:var(--bg); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <span style="font-weight:600;">${filename}（共 ${data.length} 条）</span>
+          <button class="btn btn-success" onclick="doImportStudents()">确认导入 ${data.length} 名学生</button>
+        </div>
+        <div class="data-table-wrap" style="max-height:220px;">
+          <table><thead><tr><th>姓名</th><th>班级</th><th>身份证号</th></tr></thead><tbody>
+            ${data.slice(0,8).map(r=>`<tr><td>${r.name}</td><td>${r.className||'-'}</td><td>${r.idNumber||'-'}</td></tr>`).join('')}
+            ${data.length>8?`<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">...还有 ${data.length-8} 条</td></tr>`:''}
+          </tbody></table>
+        </div>
+      </div>`;
+    }
+
+    async function doImportStudents() {
+      const data = window._pendingStudentData;
+      if (!data || !data.length) return;
+      const bar = document.getElementById('student-progress-bar');
+      const text = document.getElementById('student-progress-text');
+      const progressWrap = document.getElementById('student-import-progress');
+      progressWrap.style.display = 'block';
+      bar.style.width = '0%';
+      let imported = 0, skipped = 0, dupDetails = [];
+      const total = data.length;
+      for (let i = 0; i < total; i++) {
+        const item = data[i];
+        // 去重规则：
+        // 1. 有身份证号 → 身份证号完全相同则跳过
+        // 2. 无身份证号 → 姓名完全相同 且 班级完全相同 才算重复
+        const dup = allStudents.find(s => {
+          if (item.idNumber && s.idNumber === item.idNumber) return true;
+          if (!item.idNumber && s.name === item.name && item.className === s.className) return true;
+          return false;
+        });
+        if (!dup) {
+          allStudents.push({ _id: nextStudentId++, ...item, createdAt: new Date().toISOString() });
+          imported++;
+        } else {
+          skipped++;
+          // 详细调试：显示哪条数据在哪一行，因为什么原因被判定为重复
+          const matchingStudent = allStudents.find(s => s.name === item.name);
+          const reason = item.idNumber 
+            ? '身份证号' + item.idNumber + '已存在' 
+            : '姓名[' + item.name + '] + 班级[' + (item.className||'空') + '] 与库中学生[' + matchingStudent?.name + '][' + (matchingStudent?.className||'空') + ']相同';
+          if (dupDetails.length < 5) {
+            dupDetails.push('第' + (i+1) + '行:' + reason);
+          }
+        }
+        bar.style.width = Math.round(((i+1) / total) * 100) + '%';
+        text.textContent = `导入中 ${i+1}/${total}（已导入:${imported} 跳过:${skipped}）`;
+        if (i % 100 === 0) await new Promise(r => setTimeout(r, 0)); // Yield to UI
+      }
+      await saveStudents();
+      updateStats(); populateClassFilter(); loadStudents();
+      const dupNote = dupDetails.length ? '\n重复详情：\n' + dupDetails.join('\n') : '';
+      text.textContent = `完成！导入 ${imported} 条，跳过 ${skipped} 条${dupNote ? '（见详情）' : ''}`;
+      showAlert(`学生导入完成：新增 ${imported}，跳过 ${skipped}。\n${dupNote || '无重复'}`, 'success', 'student-import-alert');
+      document.getElementById('student-import-preview').innerHTML = '';
+      window._pendingStudentData = null;
+    }
+
+    async function handleScoreFile(file) {
+      try {
+        showAlert('正在解析文件...', 'info', 'score-import-alert');
+        const rows = await parseExcelFile(file);
+        const normalized = rows.map(r => {
+          const studentName = String(r['姓名'] || '').trim();
+          // 尝试匹配已有学生的身份证号
+          const matchedStudent = allStudents.find(s => s.name === studentName);
+          return {
+            studentId: matchedStudent?.idNumber || String(r['身份证号'] || r['身份证号码'] || '').trim(),
+            studentName,
+            className: String(r['班级'] || '').trim(),
+            year: String(r['学年'] || '').trim(),
+            examName: String(r['考试名称'] || r['考试'] || '').trim(),
+            totalScore: Number(r['总分']) || 0,
+          };
+        }).filter(r => r.studentName && r.examName);
+        if (!normalized.length) { showAlert('未识别到有效成绩数据', 'error', 'score-import-alert'); return; }
+        window._pendingScoreData = normalized;
+        showScorePreview(normalized, file.name);
+        showAlert(`已解析 ${normalized.length} 条成绩，确认后点击「确认导入」`, 'success', 'score-import-alert');
+      } catch (err) { showAlert('文件解析失败：' + err.message, 'error', 'score-import-alert'); }
+    }
+
+    function showScorePreview(data, filename) {
+      const preview = document.getElementById('score-import-preview');
+      const exams = [...new Set(data.map(r => (r.year + ' ' + r.examName).trim()))];
+      preview.innerHTML = `<div style="margin-top:16px; border:1px solid var(--border); border-radius:10px; overflow:hidden;">
+        <div style="background:var(--bg); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <span style="font-weight:600;">${filename}（共 ${data.length} 条）</span><br>
+            <span style="font-size:0.8rem; color:var(--text-muted);">检测到 ${exams.length} 场考试：${exams.slice(0,5).join('、')}${exams.length>5?'...':''}</span>
+          </div>
+          <button class="btn btn-success" onclick="doImportScores()">确认导入 ${data.length} 条成绩</button>
+        </div>
+        <div class="data-table-wrap" style="max-height:220px;">
+          <table><thead><tr><th>姓名</th><th>学年</th><th>考试</th><th>班级</th><th>总分</th><th>身份证号</th></tr></thead><tbody>
+            ${data.slice(0,8).map(r=>`<tr><td>${r.studentName}</td><td>${r.year}</td><td>${r.examName}</td><td>${r.className}</td><td>${r.totalScore}</td><td>${r.studentId||'-'}</td></tr>`).join('')}
+            ${data.length>8?`<tr><td colspan="6" style="text-align:center;color:var(--text-muted);">...还有 ${data.length-8} 条</td></tr>`:''}
+          </tbody></table>
+        </div>
+      </div>`;
+    }
+
+    async function doImportScores() {
+      const data = window._pendingScoreData;
+      if (!data || !data.length) return;
+      const bar = document.getElementById('score-progress-bar');
+      const text = document.getElementById('score-progress-text');
+      const progressWrap = document.getElementById('score-import-progress');
+      progressWrap.style.display = 'block';
+      bar.style.width = '0%';
+      let imported = 0, skipped = 0;
+      // 考试 Set 包含：已有记录 + 本次导入涉及的所有考试
+      let examSet = new Set();
+      allScores.forEach(s => {
+        if (s.year && s.examName) examSet.add((s.year || '') + '|' + (s.examName || '').trim());
+      });
+      const total = data.length;
+      for (let i = 0; i < total; i++) {
+        const item = data[i];
+        const dup = allScores.find(s => {
+          return s.studentName === item.studentName
+              && s.examName.trim() === item.examName.trim()
+              && s.year === item.year;
+        });
+        if (!dup) {
+          allScores.push({ _id: nextScoreId++, ...item, createdAt: new Date().toISOString() });
+          imported++;
+        } else { skipped++; }
+        const examKey = (item.year || '') + '|' + (item.examName || '').trim();
+        examSet.add(examKey);
+        bar.style.width = Math.round(((i+1) / total) * 100) + '%';
+        text.textContent = `导入中 ${i+1}/${total}（已导入:${imported} 跳过:${skipped}）`;
+        if (i % 100 === 0) await new Promise(r => setTimeout(r, 0));
+      }
+      await saveScores();
+      updateStats(); populateYearFilter(); loadScores();
+      // 显示考试列表
+      const examList = [...examSet].map(e => e.split('|')[1] || '').filter(Boolean);
+      const examNote = examList.length ? '考试：' + examList.slice(0,10).join('、') + (examList.length>10?'...':'') : '';
+      text.textContent = `完成！导入 ${imported} 条，跳过 ${skipped} 条，共 ${examSet.size} 场考试`;
+      showAlert(`成绩导入完成：新增 ${imported}，跳过 ${skipped}，共 ${examSet.size} 场考试\n${examNote}`, 'success', 'score-import-alert');
+      document.getElementById('score-import-preview').innerHTML = '';
+      window._pendingScoreData = null;
+    }
+
+    // Export
+    function downloadBlob(data, filename) {
+      const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a'); a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+    }
+
+    function exportData(type) {
+      if (type === 'students') downloadBlob(allStudents, 'students.json');
+      else if (type === 'scores') downloadBlob(allScores, 'scores.json');
+      else downloadBlob({ students: allStudents, scores: allScores }, 'all_data.json');
+    }
+
+    function exportQueryData() {
+      if (!allStudents.length && !allScores.length) { showAlert('暂无数据可导出', 'error'); return; }
+      const sc = allStudents.map(s => ({ name: s.name, idNumber: s.idNumber || '', className: s.className || '' }));
+      const ss = allScores.map(s => ({ studentId: s.studentId || '', studentName: s.studentName || '', className: s.className || '', year: s.year || '', examName: s.examName || '', totalScore: s.totalScore || 0 }));
+      downloadBlob(sc, 'students.json');
+      setTimeout(() => downloadBlob(ss, 'scores.json'), 300);
+      showAlert(`已准备好查询数据（students.json ${sc.length}条，scores.json ${ss.length}条）<br>请将这两个文件上传到 GitHub 仓库`, 'success');
+    }
+
+    // Settings
+    function changePassword() {
+      const newPwd = document.getElementById('new-password').value;
+      const confirmPwd = document.getElementById('confirm-password').value;
+      if (!newPwd || newPwd.length < 6) { showAlert('密码至少6位', 'error', 'settings-alert'); return; }
+      if (newPwd !== confirmPwd) { showAlert('两次输入的密码不一致', 'error', 'settings-alert'); return; }
+      localStorage.setItem(STORAGE_PWD, newPwd);
+      document.getElementById('new-password').value = '';
+      document.getElementById('confirm-password').value = '';
+      showAlert('密码修改成功！', 'success', 'settings-alert');
+    }
+
+    async function clearAllData() {
+      if (!confirm('确定要清空所有数据吗？此操作不可恢复！')) return;
+      if (!confirm('再次确认：清空后所有学生和成绩记录将被删除！')) return;
+      await dbClear(STORE_STUDENTS);
+      await dbClear(STORE_SCORES);
+      allStudents = []; allScores = []; nextStudentId = 1; nextScoreId = 1;
+      updateStats(); populateYearFilter(); populateClassFilter(); loadScores(); loadStudents();
+      showAlert('所有数据已清空', 'success');
+    }
+
+    // Event listeners
+    function setupEventListeners() {
+      const scoreSearch = document.getElementById('score-search');
+      if (scoreSearch) scoreSearch.addEventListener('keyup', e => { if (e.key === 'Enter') loadScores(); });
+      const studentSearch = document.getElementById('student-search');
+      if (studentSearch) studentSearch.addEventListener('keyup', e => { if (e.key === 'Enter') loadStudents(); });
+    }
+
+    // Start
+    init();
+  </script>
+</body>
+</html>
