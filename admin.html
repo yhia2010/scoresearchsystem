@@ -1,0 +1,1893 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>教师后台 - 新安中学成绩管理系统</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1a5c3a;
+      --primary-light: #2e8b57;
+      --primary-dark: #0f3d26;
+      --secondary: #3aaa6e;
+      --accent: #f59e0b;
+      --success: #10b981;
+      --danger: #ef4444;
+      --bg: #f0f4f2;
+      --bg-card: #ffffff;
+      --text: #0f1a12;
+      --text-muted: #3d5a47;
+      --border: #c8dfd1;
+      --shadow: 0 4px 24px rgba(26,92,58,0.10);
+      --shadow-lg: 0 12px 40px rgba(26,92,58,0.15);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --radius-xs: 6px;
+    }
+    body {
+      font-family: 'Noto Sans SC', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== ANIMATIONS ===== */
+    @keyframes fadeInUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    .anim-fade-up { animation: fadeInUp 0.5s ease-out both; }
+
+    /* ===== NAVBAR ===== */
+    .navbar {
+      background: linear-gradient(135deg, var(--primary-dark) 0%, var(--primary) 60%, var(--primary-light) 100%);
+      color: #fff;
+      padding: 0 32px;
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: 0 2px 20px rgba(26,92,58,0.3);
+      position: sticky; top: 0; z-index: 100;
+    }
+    .navbar-brand {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 1.1rem; font-weight: 700; letter-spacing: 0.02em;
+    }
+    .navbar-brand svg { width: 28px; height: 28px; }
+    .navbar-tabs { display: flex; gap: 4px; align-items: center; }
+    .nav-tab {
+      padding: 8px 18px; border-radius: 8px; cursor: pointer;
+      font-size: 0.9rem; font-weight: 500; transition: all 0.25s;
+      background: transparent; color: rgba(255,255,255,0.75); border: none;
+    }
+    .nav-tab:hover { background: rgba(255,255,255,0.15); color: #fff; }
+    .nav-tab.active { background: rgba(255,255,255,0.2); color: #fff; }
+    .user-info {
+      display: flex; align-items: center; gap: 12px;
+      font-size: 0.9rem; color: rgba(255,255,255,0.9);
+    }
+    .logout-btn {
+      padding: 6px 14px; border-radius: var(--radius-xs);
+      background: rgba(255,255,255,0.15); color: #fff;
+      border: none; cursor: pointer; font-size: 0.85rem;
+      font-weight: 500; transition: all 0.2s;
+    }
+    .logout-btn:hover { background: rgba(255,255,255,0.25); }
+
+    /* ===== ADMIN PAGE ===== */
+    .admin-page { background: var(--bg); min-height: calc(100vh - 64px); }
+    .admin-wrap { max-width: 1200px; margin: 0 auto; padding: 28px 16px 48px; }
+    .admin-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 24px; flex-wrap: wrap; gap: 12px;
+    }
+    .admin-header h2 { font-size: 1.3rem; font-weight: 700; color: var(--primary); }
+
+    /* Section Card */
+    .section-card {
+      background: #fff; border-radius: var(--radius); padding: 24px; margin-bottom: 24px;
+      box-shadow: var(--shadow); border: 1px solid rgba(200,223,209,0.4);
+      transition: box-shadow 0.25s;
+    }
+    .section-card:hover { box-shadow: var(--shadow-lg); }
+    .section-card h3 {
+      font-size: 1rem; font-weight: 700; color: var(--text); margin-bottom: 18px;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    /* Admin Tabs */
+    .admin-tabs {
+      display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap;
+      border-bottom: 2px solid var(--border); padding-bottom: 4px;
+    }
+    .admin-tab-btn {
+      padding: 10px 20px; border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+      cursor: pointer; font-size: 0.9rem; font-weight: 600; border: none;
+      background: transparent; color: var(--text-muted); transition: all 0.25s; font-family: inherit;
+    }
+    .admin-tab-btn:hover { color: var(--primary); background: #f0f9f4; }
+    .admin-tab-btn.active {
+      background: var(--primary); color: #fff;
+      box-shadow: 0 -2px 8px rgba(26,92,58,0.2);
+    }
+    .admin-tab-panel { display: none; }
+    .admin-tab-panel.active { display: block; animation: fadeIn 0.3s ease-out; }
+
+    /* Stats Bar */
+    .stats-bar {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 12px; margin-bottom: 24px;
+    }
+    .stats-bar-item {
+      background: #fff; border-radius: 12px; padding: 20px 16px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05); text-align: center;
+      border: 1px solid rgba(200,223,209,0.3);
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    .stats-bar-item:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(0,0,0,0.08); }
+    .stats-bar-item .n { font-size: 2rem; font-weight: 700; color: var(--primary); }
+    .stats-bar-item .l { font-size: 0.85rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* Form Styles */
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: block; font-size: 0.875rem; font-weight: 600;
+      color: var(--text); margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%; padding: 12px 16px; border: 2px solid var(--border);
+      border-radius: var(--radius-sm); font-size: 0.975rem;
+      font-family: inherit; color: var(--text); background: #f8fafc;
+      transition: border-color 0.25s, box-shadow 0.25s, background 0.25s; outline: none;
+    }
+    .form-input:focus {
+      border-color: var(--primary-light);
+      box-shadow: 0 0 0 4px rgba(46,139,87,0.12);
+      background: #fff;
+    }
+    select.form-input {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      background-size: 20px;
+      padding-right: 40px;
+    }
+    .row { display: flex; gap: 14px; flex-wrap: wrap; }
+    .row .form-group { flex: 1; min-width: 140px; }
+
+    /* Button Styles */
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 8px; padding: 12px 28px; border-radius: var(--radius-sm);
+      font-size: 0.975rem; font-weight: 600; cursor: pointer;
+      border: none; transition: all 0.25s; font-family: inherit;
+      position: relative; overflow: hidden;
+    }
+    .btn::after {
+      content: ''; position: absolute; inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+      opacity: 0; transition: opacity 0.25s;
+    }
+    .btn:hover::after { opacity: 1; }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), var(--primary-light));
+      color: #fff; box-shadow: 0 4px 16px rgba(26,92,58,0.3);
+    }
+    .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(26,92,58,0.4); }
+    .btn-primary:disabled { opacity: 0.7; cursor: not-allowed; transform: none; }
+    .btn-secondary { background: #f1f5f9; color: var(--text); border: 2px solid var(--border); }
+    .btn-secondary:hover { background: #e8f0eb; border-color: var(--primary-light); }
+    .btn-success { background: linear-gradient(135deg, #059669, var(--success)); color: #fff; box-shadow: 0 4px 12px rgba(16,185,129,0.3); }
+    .btn-success:hover { transform: translateY(-2px); }
+    .btn-danger { background: linear-gradient(135deg, #dc2626, var(--danger)); color: #fff; box-shadow: 0 4px 12px rgba(239,68,68,0.2); }
+    .btn-danger:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(239,68,68,0.35); }
+    .btn-sm { padding: 7px 14px; font-size: 0.825rem; border-radius: var(--radius-xs); }
+    .btn-full { width: 100%; }
+    .btn-group { display: flex; gap: 10px; flex-wrap: wrap; }
+
+    /* Alert Styles */
+    .alert {
+      padding: 12px 16px; border-radius: var(--radius-sm); font-size: 0.9rem;
+      margin-bottom: 16px; display: none; align-items: center; gap: 10px;
+    }
+    .alert.show { display: flex; }
+    .alert-success { background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+    .alert-error { background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+    .alert-info { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+
+    /* Badge Styles */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 0.78rem; font-weight: 600;
+    }
+    .badge-blue { background: #dbeafe; color: #1e40af; }
+    .badge-green { background: #dcfce7; color: #166534; }
+    .badge-amber { background: #fef9c3; color: #854d0e; }
+
+    /* Table Styles */
+    .data-table-wrap {
+      max-height: 400px; overflow-y: auto;
+      border-radius: var(--radius-sm); border: 1px solid var(--border);
+    }
+    .data-table-wrap table thead { position: sticky; top: 0; z-index: 1; }
+    table { width: 100%; border-collapse: collapse; background: #fff; font-size: 0.85rem; }
+    thead tr { background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: #fff; }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid #eef2ef; }
+    thead th { border-bottom: none; font-weight: 600; }
+    tbody tr { transition: background 0.15s; }
+    tbody tr:hover { background: #f0f9f4; }
+    tbody tr:nth-child(even) { background: #fafcfa; }
+    tbody tr:nth-child(even):hover { background: #eef7f1; }
+    tbody tr:last-child td { border-bottom: none; }
+
+    /* Action Buttons */
+    .action-btns { display: flex; gap: 6px; }
+    .action-btn {
+      padding: 5px 12px; border-radius: var(--radius-xs); cursor: pointer;
+      font-size: 0.78rem; font-weight: 600; border: none; transition: all 0.2s;
+    }
+    .action-btn:hover { transform: translateY(-1px); }
+    .action-btn.edit { background: #dbeafe; color: #1e40af; }
+    .action-btn.delete { background: #fee2e2; color: #991b1b; }
+    .action-btn.view { background: #dcfce7; color: #166534; }
+
+    /* Search Bar */
+    .search-bar { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+    .search-bar .form-input { flex: 1; min-width: 200px; }
+
+    /* Upload Zone */
+    .upload-zone {
+      border: 2.5px dashed var(--border); border-radius: var(--radius-sm);
+      padding: 40px 24px; text-align: center; cursor: pointer;
+      transition: all 0.3s; background: #f8fafc;
+    }
+    .upload-zone:hover, .upload-zone.drag { 
+      border-color: var(--primary-light); background: #edf7f1; transform: scale(1.005); 
+    }
+    .upload-zone svg { width: 48px; height: 48px; color: var(--primary-light); margin-bottom: 12px; }
+    .upload-zone p { color: var(--text-muted); font-size: 0.9rem; margin-bottom: 8px; }
+    .upload-zone span { font-weight: 600; color: var(--primary); }
+    .upload-zone small { display: block; color: var(--text-muted); font-size: 0.8rem; margin-top: 8px; }
+    #file-input { display: none; }
+
+    /* Progress Bar */
+    .progress-bar-wrap { background: #e2e8f0; border-radius: 20px; height: 8px; margin: 12px 0; overflow: hidden; }
+    .progress-bar { background: linear-gradient(90deg, var(--primary), var(--primary-light)); height: 100%; border-radius: 20px; transition: width 0.4s; }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 200;
+      display: none; align-items: center; justify-content: center; padding: 16px;
+      backdrop-filter: blur(4px);
+    }
+    .modal-overlay.show { display: flex; }
+    .modal {
+      background: #fff; border-radius: var(--radius); padding: 32px;
+      max-width: 560px; width: 100%; box-shadow: 0 24px 80px rgba(0,0,0,0.25);
+      animation: fadeInUp 0.3s ease-out; max-height: 90vh; overflow-y: auto;
+    }
+    .modal h3 { font-size: 1.15rem; font-weight: 700; margin-bottom: 20px; }
+    .modal-footer { display: flex; gap: 10px; justify-content: flex-end; margin-top: 24px; }
+
+    /* Template Info */
+    .template-info {
+      background: #f0f7f2; border: 1px solid #a8d5bc; border-radius: var(--radius-sm);
+      padding: 16px 20px; font-size: 0.875rem; color: #1a5c3a; line-height: 1.8;
+      margin-top: 20px;
+    }
+    .template-info strong { display: block; margin-bottom: 8px; font-size: 0.95rem; }
+
+    /* Empty State */
+    .empty-state { text-align: center; padding: 56px 24px; color: var(--text-muted); }
+    .empty-state svg { width: 56px; height: 56px; opacity: 0.3; margin-bottom: 12px; }
+    .empty-state p { font-size: 0.95rem; }
+
+    /* Divider */
+    .divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+    /* Loading */
+    .spinner {
+      width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff; border-radius: 50%; animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Footer */
+    .footer {
+      text-align: center; padding: 24px 16px; color: var(--text-muted);
+      font-size: 0.8rem; border-top: 1px solid var(--border); margin-top: 40px;
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb { background: #c8dfd1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #a8d5bc; }
+  </style>
+</head>
+<body>
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="navbar-brand">
+      <img src="logo.png" alt="校徽" style="width: 40px; height: 40px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255,255,255,0.3); vertical-align: middle; margin-right: 10px;">
+      新安中学2023级高三学生历年成绩查询系统
+    </div>
+    <div class="navbar-tabs">
+      <div class="user-info">
+        <span id="user-email">加载中...</span>
+        <button class="logout-btn" onclick="logout()">退出登录</button>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Admin Page -->
+  <div class="admin-page">
+    <div class="admin-wrap">
+      <!-- Header -->
+      <div class="admin-header">
+        <h2>📊 数据管理中心</h2>
+        <div class="btn-group">
+          <button class="btn btn-secondary btn-sm" onclick="location.href='index.html'">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m15 18-6-6 6-6"/>
+            </svg>
+            返回前台
+          </button>
+        </div>
+      </div>
+
+      <!-- Stats Bar -->
+      <div class="stats-bar">
+        <div class="stats-bar-item">
+          <div class="n" id="stat-students">0</div>
+          <div class="l">学生总数</div>
+        </div>
+        <div class="stats-bar-item">
+          <div class="n" id="stat-scores">0</div>
+          <div class="l">成绩记录</div>
+        </div>
+        <div class="stats-bar-item">
+          <div class="n" id="stat-exams">0</div>
+          <div class="l">考试次数</div>
+        </div>
+        <div class="stats-bar-item">
+          <div class="n" id="stat-years">0</div>
+          <div class="l">学年数量</div>
+        </div>
+      </div>
+
+      <!-- Admin Tabs -->
+      <div class="admin-tabs">
+        <button class="admin-tab-btn active" data-tab="scores">成绩管理</button>
+        <button class="admin-tab-btn" data-tab="students">学生管理</button>
+        <button class="admin-tab-btn" data-tab="import">数据导入</button>
+        <button class="admin-tab-btn" data-tab="export">数据导出</button>
+      </div>
+
+      <!-- Scores Panel -->
+      <div id="tab-scores" class="admin-tab-panel active">
+        <div class="section-card">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 20V10M18 20V4M6 20v-4"/>
+            </svg>
+            添加成绩记录
+          </h3>
+          
+          <div id="score-alert" class="alert"></div>
+
+          <form id="score-form">
+            <div class="row">
+              <div class="form-group">
+                <label class="form-label">学生</label>
+                <select id="score-student" class="form-input" required>
+                  <option value="">选择学生</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">考试名称</label>
+                <input type="text" id="score-exam" class="form-input" placeholder="如：月考一" required>
+              </div>
+            </div>
+            <div class="row">
+              <div class="form-group">
+                <label class="form-label">学年</label>
+                <input type="text" id="score-year" class="form-input" placeholder="如：2025-2026" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">考试日期</label>
+                <input type="date" id="score-date" class="form-input" required>
+              </div>
+            </div>
+            
+            <div class="divider">科目成绩</div>
+            <div class="row" id="subjects-row">
+              <div class="form-group">
+                <label class="form-label">语文</label>
+                <input type="number" id="sub-chinese" class="form-input" placeholder="0-150" min="0" max="150">
+              </div>
+              <div class="form-group">
+                <label class="form-label">数学</label>
+                <input type="number" id="sub-math" class="form-input" placeholder="0-150" min="0" max="150">
+              </div>
+              <div class="form-group">
+                <label class="form-label">英语</label>
+                <input type="number" id="sub-english" class="form-input" placeholder="0-150" min="0" max="150">
+              </div>
+              <div class="form-group">
+                <label class="form-label">物理</label>
+                <input type="number" id="sub-physics" class="form-input" placeholder="0-100" min="0" max="100">
+              </div>
+            </div>
+            <div class="row">
+              <div class="form-group">
+                <label class="form-label">化学</label>
+                <input type="number" id="sub-chemistry" class="form-input" placeholder="0-100" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label class="form-label">生物</label>
+                <input type="number" id="sub-biology" class="form-input" placeholder="0-100" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label class="form-label">政治</label>
+                <input type="number" id="sub-politics" class="form-input" placeholder="0-100" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label class="form-label">历史</label>
+                <input type="number" id="sub-history" class="form-input" placeholder="0-100" min="0" max="100">
+              </div>
+            </div>
+            <div class="row">
+              <div class="form-group">
+                <label class="form-label">地理</label>
+                <input type="number" id="sub-geography" class="form-input" placeholder="0-100" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label class="form-label">技术</label>
+                <input type="number" id="sub-tech" class="form-input" placeholder="0-100" min="0" max="100">
+              </div>
+              <div class="form-group">
+                <label class="form-label">总分（自动计算）</label>
+                <input type="number" id="score-total" class="form-input" placeholder="自动计算" readonly>
+              </div>
+            </div>
+
+            <div class="divider">排名（可选）</div>
+            <div class="row">
+              <div class="form-group">
+                <label class="form-label">班级排名</label>
+                <input type="number" id="score-class-rank" class="form-input" placeholder="如：5" min="1">
+              </div>
+              <div class="form-group">
+                <label class="form-label">年级排名</label>
+                <input type="number" id="score-grade-rank" class="form-input" placeholder="如：50" min="1">
+              </div>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-full" style="margin-top: 16px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              添加成绩记录
+            </button>
+          </form>
+        </div>
+
+        <!-- Scores List -->
+        <div class="section-card">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/>
+            </svg>
+            成绩记录列表
+          </h3>
+          
+          <div class="search-bar">
+            <input type="text" id="score-search" class="form-input" placeholder="搜索学生姓名或考试名称...">
+            <select id="score-year-filter" class="form-input" style="max-width: 180px;">
+              <option value="">全部学年</option>
+            </select>
+            <button class="btn btn-secondary" onclick="loadScores()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              搜索
+            </button>
+          </div>
+
+          <div id="scores-list"></div>
+        </div>
+      </div>
+
+      <!-- Students Panel -->
+      <div id="tab-students" class="admin-tab-panel">
+        <div class="section-card">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            添加学生
+          </h3>
+
+          <div id="student-alert" class="alert"></div>
+
+          <form id="student-form">
+            <div class="row">
+              <div class="form-group">
+                <label class="form-label">姓名 *</label>
+                <input type="text" id="student-name" class="form-input" placeholder="学生姓名" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label">身份证号码</label>
+                <input type="text" id="student-id" class="form-input" placeholder="18位身份证号（可选，录入后可支持身份证查询）" maxlength="18">
+              </div>
+            </div>
+            <div class="row">
+              <div class="form-group">
+                <label class="form-label">班级</label>
+                <input type="text" id="student-class" class="form-input" placeholder="如：15班">
+              </div>
+              <div class="form-group">
+                <label class="form-label">学号</label>
+                <input type="text" id="student-sid" class="form-input" placeholder="学号（可选）">
+              </div>
+            </div>
+            <button type="submit" class="btn btn-primary btn-full" style="margin-top: 16px;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M12 5v14M5 12h14"/>
+              </svg>
+              添加学生
+            </button>
+          </form>
+        </div>
+
+        <!-- Students List -->
+        <div class="section-card">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+              <circle cx="9" cy="7" r="4"/>
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+            学生列表
+          </h3>
+
+          <div class="search-bar">
+            <input type="text" id="student-search" class="form-input" placeholder="搜索姓名或身份证...">
+            <select id="student-class-filter" class="form-input" style="max-width: 150px;">
+              <option value="">全部班级</option>
+            </select>
+            <button class="btn btn-secondary" onclick="loadStudents()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+              </svg>
+              搜索
+            </button>
+          </div>
+
+          <div id="students-list"></div>
+        </div>
+      </div>
+
+      <!-- Import Panel -->
+      <div id="tab-import" class="admin-tab-panel">
+
+        <!-- 导入学生数据 -->
+        <div class="section-card" style="margin-bottom:20px;">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+              <circle cx="12" cy="7" r="4"/>
+            </svg>
+            导入学生数据
+          </h3>
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:12px; margin-bottom:16px; font-size:0.85rem; color:#92400e;">
+            📋 <strong>Excel 格式要求：</strong>表格须包含以下列名（顺序不限）：<br>
+            <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">姓名</code>（必填）&nbsp;
+            <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">班级</code>&nbsp;
+            <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">身份证号码</code>（或 <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">身份证号</code>）
+          </div>
+          <div id="student-import-alert" class="alert"></div>
+          <div class="upload-zone" id="student-upload-zone" onclick="document.getElementById('student-file-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p>点击或拖拽学生表格到此处</p>
+            <span>支持 .xlsx / .xls 格式</span>
+          </div>
+          <input type="file" id="student-file-input" accept=".xlsx,.xls,.csv,.json" style="display:none;">
+          <div id="student-import-progress" style="display:none; margin-top:12px;">
+            <div class="progress-bar-wrap">
+              <div class="progress-bar" id="student-progress-bar" style="width: 0%"></div>
+            </div>
+            <p id="student-progress-text" style="font-size:0.85rem; margin-top:6px;">准备中...</p>
+          </div>
+          <div id="student-import-preview"></div>
+        </div>
+
+        <!-- 导入成绩数据 -->
+        <div class="section-card">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/>
+              <line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/>
+            </svg>
+            导入成绩数据
+          </h3>
+          <div style="background:#fffbeb; border:1px solid #fde68a; border-radius:8px; padding:12px; margin-bottom:16px; font-size:0.85rem; color:#92400e;">
+            📋 <strong>Excel 格式要求：</strong>表格须包含以下列名：<br>
+            <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">姓名</code>&nbsp;
+            <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">身份证号</code>&nbsp;
+            <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">班级</code>&nbsp;
+            <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">学年</code>&nbsp;
+            <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">考试名称</code>&nbsp;
+            <code style="background:#fef3c7; padding:2px 6px; border-radius:4px;">总分</code>&nbsp;
+            以及各科目分数（语文、数学、英语等）
+          </div>
+          <div id="score-import-alert" class="alert"></div>
+          <div class="upload-zone" id="score-upload-zone" onclick="document.getElementById('score-file-input').click()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p>点击或拖拽成绩表格到此处</p>
+            <span>支持 .xlsx / .xls 格式</span>
+          </div>
+          <input type="file" id="score-file-input" accept=".xlsx,.xls,.csv,.json" style="display:none;">
+          <div id="score-import-progress" style="display:none; margin-top:12px;">
+            <div class="progress-bar-wrap">
+              <div class="progress-bar" id="score-progress-bar" style="width: 0%"></div>
+            </div>
+            <p id="score-progress-text" style="font-size:0.85rem; margin-top:6px;">准备中...</p>
+          </div>
+          <div id="score-import-preview"></div>
+        </div>
+
+      </div>
+
+      <!-- Export Panel -->
+      <div id="tab-export" class="admin-tab-panel">
+        <div class="section-card">
+          <h3>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            导出数据
+          </h3>
+
+          <div class="btn-group" style="margin-bottom: 20px;">
+            <button class="btn btn-primary" onclick="exportData('students')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              导出学生数据
+            </button>
+            <button class="btn btn-success" onclick="exportData('scores')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              导出成绩数据
+            </button>
+            <button class="btn btn-secondary" onclick="exportData('all')">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              导出全部数据
+            </button>
+            <button class="btn btn-warning" onclick="exportQueryData()" style="background:#f59e0b; color:#fff;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              导出查询数据（用于学生查询页）
+            </button>
+          </div>
+
+          <div class="template-info">
+            <strong>📥 导出的文件说明</strong>
+            <p>导出的文件为标准 JSON 格式，可用于数据备份或迁移到其他系统。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Score Modal -->
+  <div class="modal-overlay" id="edit-score-modal">
+    <div class="modal">
+      <h3>✏️ 编辑成绩</h3>
+      <form id="edit-score-form">
+        <input type="hidden" id="edit-score-id">
+        <div class="row">
+          <div class="form-group">
+            <label class="form-label">考试名称</label>
+            <input type="text" id="edit-exam" class="form-input" required>
+          </div>
+          <div class="form-group">
+            <label class="form-label">学年</label>
+            <input type="text" id="edit-year" class="form-input" required>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">总分</label>
+          <input type="number" id="edit-total" class="form-input" required>
+        </div>
+        <div class="row">
+          <div class="form-group">
+            <label class="form-label">班级排名</label>
+            <input type="number" id="edit-class-rank" class="form-input">
+          </div>
+          <div class="form-group">
+            <label class="form-label">年级排名</label>
+            <input type="number" id="edit-grade-rank" class="form-input">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('edit-score-modal')">取消</button>
+          <button type="submit" class="btn btn-primary">保存修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Student Modal -->
+  <div class="modal-overlay" id="edit-student-modal">
+    <div class="modal">
+      <h3>✏️ 编辑学生信息</h3>
+      <form id="edit-student-form">
+        <input type="hidden" id="edit-student-docid">
+        <div class="form-group">
+          <label class="form-label">姓名 *</label>
+          <input type="text" id="edit-name" class="form-input" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label">身份证号码</label>
+          <input type="text" id="edit-idcard" class="form-input" placeholder="18位身份证号（未录入可在此添加）" maxlength="18">
+          <small style="color: var(--text-muted); font-size: 0.8rem;">未录入身份证的学生可通过姓名查询；已录入的可修改</small>
+        </div>
+        <div class="form-group">
+          <label class="form-label">班级</label>
+          <input type="text" id="edit-class" class="form-input" placeholder="如：15班">
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeModal('edit-student-modal')">取消</button>
+          <button type="submit" class="btn btn-primary">保存修改</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>新安中学2023级高三学生历年成绩查询系统 | 博学笃志，明礼诚信 | 教师后台</p>
+  </div>
+
+  <script>
+    // Firebase Configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDNDeDnQTv3CX9XkUu1arTcmLhLBZLl0tQ",
+      authDomain: "score-80938.firebaseapp.com",
+      databaseURL: "https://score-80938-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "score-80938",
+      storageBucket: "score-80938.firebasestorage.app",
+      messagingSenderId: "941938185687",
+      appId: "1:941938185687:web:b6d5a11c88a65660b4e792"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    // Global data
+    let allStudents = [];
+    let allScores = [];
+    let currentUser = null;
+
+    // Check authentication
+    auth.onAuthStateChanged(async (user) => {
+      if (user) {
+        currentUser = user;
+        document.getElementById('user-email').textContent = user.email;
+        await loadData();
+        setupEventListeners();
+      } else {
+        window.location.href = 'login.html';
+      }
+    });
+
+    // Load all data
+    async function loadData() {
+      try {
+        // Load students
+        const studentsSnapshot = await db.collection('students').get();
+        allStudents = studentsSnapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+
+        // Load scores
+        const scoresSnapshot = await db.collection('scores').get();
+        allScores = scoresSnapshot.docs.map(doc => ({ docId: doc.id, ...doc.data() }));
+
+        // Update stats
+        updateStats();
+        
+        // Populate dropdowns
+        populateStudentSelect();
+        populateYearFilter();
+        populateClassFilter();
+
+        // Load lists
+        loadScores();
+        loadStudents();
+
+      } catch (error) {
+        console.error('Error loading data:', error);
+        showAlert('加载数据失败', 'error');
+      }
+    }
+
+    // Update statistics
+    function updateStats() {
+      const years = [...new Set(allScores.map(s => s.year))];
+      const exams = [...new Set(allScores.map(s => s.examName))];
+
+      document.getElementById('stat-students').textContent = allStudents.length;
+      document.getElementById('stat-scores').textContent = allScores.length;
+      document.getElementById('stat-exams').textContent = exams.filter(e => e).length;
+      document.getElementById('stat-years').textContent = years.length;
+    }
+
+    // Populate student select
+    function populateStudentSelect() {
+      const select = document.getElementById('score-student');
+      select.innerHTML = '<option value="">选择学生</option>';
+      allStudents.forEach(student => {
+        const option = document.createElement('option');
+        option.value = student.idNumber;
+        option.textContent = `${student.name} (${student.className || '未分班'}) - ${student.idNumber}`;
+        select.appendChild(option);
+      });
+    }
+
+    // Populate year filter
+    function populateYearFilter() {
+      const years = [...new Set(allScores.map(s => s.year))].sort().reverse();
+      const filter = document.getElementById('score-year-filter');
+      filter.innerHTML = '<option value="">全部学年</option>';
+      years.forEach(year => {
+        const option = document.createElement('option');
+        option.value = year;
+        option.textContent = year;
+        filter.appendChild(option);
+      });
+    }
+
+    // Populate class filter
+    function populateClassFilter() {
+      const classes = [...new Set(allStudents.map(s => s.className).filter(c => c))];
+      const filter = document.getElementById('student-class-filter');
+      filter.innerHTML = '<option value="">全部班级</option>';
+      classes.forEach(cls => {
+        const option = document.createElement('option');
+        option.value = cls;
+        option.textContent = cls;
+        filter.appendChild(option);
+      });
+    }
+
+    // Setup event listeners
+    function setupEventListeners() {
+      // Admin tabs
+      document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+          document.querySelectorAll('.admin-tab-panel').forEach(p => p.classList.remove('active'));
+          btn.classList.add('active');
+          document.getElementById('tab-' + btn.dataset.tab).classList.add('active');
+        });
+      });
+
+      // Score form
+      document.getElementById('score-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await addScore();
+      });
+
+      // Auto-calculate total
+      const subjectInputs = document.querySelectorAll('#subjects-row input, #subjects-row + div input');
+      subjectInputs.forEach(input => {
+        input.addEventListener('input', calculateTotal);
+      });
+
+      // Student form
+      document.getElementById('student-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await addStudent();
+      });
+
+      // Edit score form
+      document.getElementById('edit-score-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await updateScore();
+      });
+
+      // Edit student form
+      document.getElementById('edit-student-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        await updateStudent();
+      });
+
+      // Search listeners
+      document.getElementById('score-search').addEventListener('input', loadScores);
+      document.getElementById('score-year-filter').addEventListener('change', loadScores);
+      document.getElementById('student-search').addEventListener('input', loadStudents);
+      document.getElementById('student-class-filter').addEventListener('change', loadStudents);
+
+      // File upload
+      setupFileUpload();
+    }
+
+    // Calculate total score
+    function calculateTotal() {
+      const subjects = ['chinese', 'math', 'english', 'physics', 'chemistry', 'biology', 'politics', 'history', 'geography', 'tech'];
+      let total = 0;
+      subjects.forEach(sub => {
+        const val = parseFloat(document.getElementById('sub-' + sub)?.value) || 0;
+        total += val;
+      });
+      document.getElementById('score-total').value = total > 0 ? total : '';
+    }
+
+    // Add score
+    async function addScore() {
+      const studentId = document.getElementById('score-student').value;
+      const examName = document.getElementById('score-exam').value;
+      const year = document.getElementById('score-year').value;
+      const date = document.getElementById('score-date').value;
+      const totalScore = parseFloat(document.getElementById('score-total').value) || 0;
+      const classRank = parseInt(document.getElementById('score-class-rank').value) || null;
+      const gradeRank = parseInt(document.getElementById('score-grade-rank').value) || null;
+
+      // Collect subjects
+      const subjects = {};
+      const subjectFields = [
+        { id: 'sub-chinese', name: '语文' },
+        { id: 'sub-math', name: '数学' },
+        { id: 'sub-english', name: '英语' },
+        { id: 'sub-physics', name: '物理' },
+        { id: 'sub-chemistry', name: '化学' },
+        { id: 'sub-biology', name: '生物' },
+        { id: 'sub-politics', name: '政治' },
+        { id: 'sub-history', name: '历史' },
+        { id: 'sub-geography', name: '地理' },
+        { id: 'sub-tech', name: '技术' }
+      ];
+
+      subjectFields.forEach(field => {
+        const val = parseFloat(document.getElementById(field.id)?.value);
+        if (val !== undefined && !isNaN(val)) {
+          subjects[field.name] = val;
+        }
+      });
+
+      try {
+        await db.collection('scores').add({
+          studentId,
+          examName,
+          year,
+          date,
+          totalScore,
+          subjects,
+          classRank,
+          gradeRank,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        showAlert('成绩添加成功！', 'success', 'score-alert');
+        document.getElementById('score-form').reset();
+        await loadData();
+
+      } catch (error) {
+        console.error('Error adding score:', error);
+        showAlert('添加失败：' + error.message, 'error', 'score-alert');
+      }
+    }
+
+    // Load scores
+    function loadScores() {
+      const search = document.getElementById('score-search').value.toLowerCase();
+      const yearFilter = document.getElementById('score-year-filter').value;
+
+      let filtered = allScores;
+
+      if (yearFilter) {
+        filtered = filtered.filter(s => s.year === yearFilter);
+      }
+
+      if (search) {
+        filtered = filtered.filter(s => {
+          const student = allStudents.find(st => st.idNumber === s.studentId);
+          return (student?.name || '').toLowerCase().includes(search) ||
+                 (s.examName || '').toLowerCase().includes(search);
+        });
+      }
+
+      const container = document.getElementById('scores-list');
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>暂无成绩记录</p></div>';
+        return;
+      }
+
+      // Sort by date
+      filtered.sort((a, b) => new Date(b.date || b.year) - new Date(a.date || a.year));
+
+      let html = '<div class="data-table-wrap"><table><thead><tr>';
+      html += '<th>学生</th><th>考试</th><th>学年</th><th>总分</th><th>班级排名</th><th>年级排名</th><th>操作</th></tr></thead><tbody>';
+
+      filtered.slice(0, 50).forEach(score => {
+        const student = allStudents.find(s => s.idNumber === score.studentId);
+        html += '<tr>';
+        html += `<td>${student?.name || '未知'}</td>`;
+        html += `<td>${score.examName || 'N/A'}</td>`;
+        html += `<td>${score.year || 'N/A'}</td>`;
+        html += `<td><strong>${(score.totalScore || 0).toFixed(0)}</strong></td>`;
+        html += `<td>${score.classRank || '-'}</td>`;
+        html += `<td>${score.gradeRank || '-'}</td>`;
+        html += `<td>
+          <div class="action-btns">
+            <button class="action-btn edit" onclick="editScore('${score.docId}')">编辑</button>
+            <button class="action-btn delete" onclick="deleteScore('${score.docId}')">删除</button>
+          </div>
+        </td>`;
+        html += '</tr>';
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    // Edit score
+    async function editScore(docId) {
+      const score = allScores.find(s => s.docId === docId);
+      if (!score) return;
+
+      document.getElementById('edit-score-id').value = docId;
+      document.getElementById('edit-exam').value = score.examName || '';
+      document.getElementById('edit-year').value = score.year || '';
+      document.getElementById('edit-total').value = score.totalScore || '';
+      document.getElementById('edit-class-rank').value = score.classRank || '';
+      document.getElementById('edit-grade-rank').value = score.gradeRank || '';
+
+      document.getElementById('edit-score-modal').classList.add('show');
+    }
+
+    // Update score
+    async function updateScore() {
+      const docId = document.getElementById('edit-score-id').value;
+
+      try {
+        await db.collection('scores').doc(docId).update({
+          examName: document.getElementById('edit-exam').value,
+          year: document.getElementById('edit-year').value,
+          totalScore: parseFloat(document.getElementById('edit-total').value) || 0,
+          classRank: parseInt(document.getElementById('edit-class-rank').value) || null,
+          gradeRank: parseInt(document.getElementById('edit-grade-rank').value) || null,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        closeModal('edit-score-modal');
+        await loadData();
+        showAlert('成绩更新成功！', 'success');
+
+      } catch (error) {
+        console.error('Error updating score:', error);
+        showAlert('更新失败：' + error.message, 'error');
+      }
+    }
+
+    // Delete score
+    async function deleteScore(docId) {
+      if (!confirm('确定要删除这条成绩记录吗？')) return;
+
+      try {
+        await db.collection('scores').doc(docId).delete();
+        await loadData();
+        showAlert('成绩已删除', 'success');
+      } catch (error) {
+        console.error('Error deleting score:', error);
+        showAlert('删除失败：' + error.message, 'error');
+      }
+    }
+
+    // Add student
+    async function addStudent() {
+      const name = document.getElementById('student-name').value.trim();
+      const idNumber = document.getElementById('student-id').value.trim();
+      const className = document.getElementById('student-class').value;
+      const studentId = document.getElementById('student-sid').value;
+
+      if (!name) {
+        showAlert('请输入学生姓名', 'error', 'student-alert');
+        return;
+      }
+
+      try {
+        // Check if student already exists by name
+        const existsByName = allStudents.find(s => s.name === name);
+        if (existsByName) {
+          showAlert('该学生姓名已存在！', 'error', 'student-alert');
+          return;
+        }
+
+        // Check if ID card already exists (if provided)
+        if (idNumber) {
+          const existsById = allStudents.find(s => s.idNumber === idNumber);
+          if (existsById) {
+            showAlert('该身份证号已被其他学生使用！', 'error', 'student-alert');
+            return;
+          }
+        }
+
+        const studentData = {
+          name,
+          className,
+          studentId,
+          createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        // Only add idNumber if it's provided
+        if (idNumber) {
+          studentData.idNumber = idNumber;
+        }
+
+        await db.collection('students').add(studentData);
+
+        showAlert('学生添加成功！', 'success', 'student-alert');
+        document.getElementById('student-form').reset();
+        await loadData();
+
+      } catch (error) {
+        console.error('Error adding student:', error);
+        showAlert('添加失败：' + error.message, 'error', 'student-alert');
+      }
+    }
+
+    // Load students
+    function loadStudents() {
+      const search = document.getElementById('student-search').value.toLowerCase();
+      const classFilter = document.getElementById('student-class-filter').value;
+
+      let filtered = allStudents;
+
+      if (classFilter) {
+        filtered = filtered.filter(s => s.className === classFilter);
+      }
+
+      if (search) {
+        // Prioritize name search, also allow ID number search
+        filtered = filtered.filter(s =>
+          (s.name || '').toLowerCase().includes(search)
+        );
+      }
+
+      const container = document.getElementById('students-list');
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>暂无学生数据</p></div>';
+        return;
+      }
+
+      let html = '<div class="data-table-wrap"><table><thead><tr>';
+      html += '<th>姓名</th><th>身份证号</th><th>班级</th><th>学号</th><th>成绩数</th><th>操作</th></tr></thead><tbody>';
+
+      filtered.forEach(student => {
+        const scoreCount = allScores.filter(s => s.studentId === student.idNumber).length;
+        html += '<tr>';
+        html += `<td><strong>${student.name}</strong></td>`;
+        html += `<td><code style="font-size:0.8rem;">${student.idNumber}</code></td>`;
+        html += `<td>${student.className || '-'}</td>`;
+        html += `<td>${student.studentId || '-'}</td>`;
+        html += `<td><span class="badge badge-blue">${scoreCount}</span></td>`;
+        html += `<td>
+          <div class="action-btns">
+            <button class="action-btn edit" onclick="editStudent('${student.docId}')">编辑</button>
+            <button class="action-btn delete" onclick="deleteStudent('${student.docId}')">删除</button>
+          </div>
+        </td>`;
+        html += '</tr>';
+      });
+
+      html += '</tbody></table></div>';
+      container.innerHTML = html;
+    }
+
+    // Edit student
+    async function editStudent(docId) {
+      const student = allStudents.find(s => s.docId === docId);
+      if (!student) return;
+
+      document.getElementById('edit-student-docid').value = docId;
+      document.getElementById('edit-name').value = student.name || '';
+      document.getElementById('edit-idcard').value = student.idNumber || '';
+      document.getElementById('edit-class').value = student.className || '';
+
+      document.getElementById('edit-student-modal').classList.add('show');
+    }
+
+    // Update student
+    async function updateStudent() {
+      const docId = document.getElementById('edit-student-docid').value;
+      const newIdCard = document.getElementById('edit-idcard').value.trim();
+      const student = allStudents.find(s => s.docId === docId);
+
+      // Check if ID card is being changed to one that already exists
+      if (newIdCard && newIdCard !== student.idNumber) {
+        const existing = allStudents.find(s => s.idNumber === newIdCard);
+        if (existing) {
+          showAlert('该身份证号已被其他学生使用！', 'error');
+          return;
+        }
+      }
+
+      try {
+        const updateData = {
+          name: document.getElementById('edit-name').value,
+          className: document.getElementById('edit-class').value,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        // Update ID card if provided
+        if (newIdCard) {
+          updateData.idNumber = newIdCard;
+        }
+
+        await db.collection('students').doc(docId).update(updateData);
+
+        closeModal('edit-student-modal');
+        await loadData();
+        showAlert('学生信息更新成功！', 'success');
+
+      } catch (error) {
+        console.error('Error updating student:', error);
+        showAlert('更新失败：' + error.message, 'error');
+      }
+    }
+
+    // Delete student
+    async function deleteStudent(docId) {
+      if (!confirm('确定要删除该学生吗？相关成绩记录也将保留。')) return;
+
+      try {
+        await db.collection('students').doc(docId).delete();
+        await loadData();
+        showAlert('学生已删除', 'success');
+      } catch (error) {
+        console.error('Error deleting student:', error);
+        showAlert('删除失败：' + error.message, 'error');
+      }
+    }
+
+    // ===== EXCEL IMPORT FUNCTIONS =====
+
+    // Parse Excel/CSV file and return array of row objects
+    function parseExcelFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const data = new Uint8Array(e.target.result);
+            const workbook = XLSX.read(data, { type: 'array', cellDates: true });
+            const sheetName = workbook.SheetNames[0];
+            const sheet = workbook.Sheets[sheetName];
+            const rows = XLSX.utils.sheet_to_json(sheet, { defval: '' });
+            resolve(rows);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        reader.onerror = reject;
+        reader.readAsArrayBuffer(file);
+      });
+    }
+
+    // Setup drag & drop for a zone
+    function setupDropZone(zoneId, inputId, handler) {
+      const zone = document.getElementById(zoneId);
+      const input = document.getElementById(inputId);
+
+      zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('drag'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+      zone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        zone.classList.remove('drag');
+        const file = e.dataTransfer.files[0];
+        if (file) handler(file);
+      });
+      input.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (file) handler(file);
+        input.value = '';
+      });
+    }
+
+    // ===== STUDENT IMPORT =====
+    async function handleStudentFile(file) {
+      try {
+        showAlert('正在解析文件...', 'info', 'student-import-alert');
+        const rows = await parseExcelFile(file);
+        if (!rows.length) {
+          showAlert('文件中没有数据！', 'error', 'student-import-alert');
+          return;
+        }
+        // Normalize column names
+        const normalized = rows.map(r => ({
+          name: String(r['姓名'] || r['学生姓名'] || r['name'] || '').trim(),
+          idNumber: String(r['身份证号码'] || r['身份证号'] || r['idNumber'] || '').trim(),
+          className: String(r['班级'] || r['className'] || '').trim(),
+          studentId: String(r['学号'] || r['序号'] || r['studentId'] || '').trim(),
+        })).filter(r => r.name);
+
+        if (!normalized.length) {
+          showAlert('未识别到有效的姓名列，请检查表格格式', 'error', 'student-import-alert');
+          return;
+        }
+
+        window.pendingStudentData = normalized;
+        showStudentPreview(normalized, file.name);
+        showAlert(`已解析 ${normalized.length} 名学生，请确认后导入`, 'success', 'student-import-alert');
+      } catch (err) {
+        showAlert('文件解析失败：' + err.message, 'error', 'student-import-alert');
+      }
+    }
+
+    function showStudentPreview(data, filename) {
+      const preview = document.getElementById('student-import-preview');
+      const cols = ['name', 'idNumber', 'className'];
+      const headers = ['姓名', '身份证号', '班级'];
+      preview.innerHTML = `
+        <div style="margin-top:16px; border:1px solid var(--border); border-radius:10px; overflow:hidden;">
+          <div style="background:var(--bg); padding:12px 16px; display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:600;">📄 ${filename}（共 ${data.length} 条）</span>
+            <button class="btn btn-success" onclick="doImportStudents()">
+              ✅ 确认导入 ${data.length} 名学生
+            </button>
+          </div>
+          <div class="data-table-wrap" style="max-height:220px;">
+            <table>
+              <thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead>
+              <tbody>
+                ${data.slice(0,8).map(r=>`<tr>${cols.map(c=>`<td>${r[c]||'-'}</td>`).join('')}</tr>`).join('')}
+                ${data.length>8?`<tr><td colspan="3" style="text-align:center;color:var(--text-muted);">...还有 ${data.length-8} 条</td></tr>`:''}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    async function doImportStudents() {
+      const data = window.pendingStudentData;
+      if (!data || !data.length) return;
+
+      const bar = document.getElementById('student-progress-bar');
+      const text = document.getElementById('student-progress-text');
+      const progressWrap = document.getElementById('student-import-progress');
+      progressWrap.style.display = 'block';
+      bar.style.width = '0%';
+
+      let imported = 0, skipped = 0, errors = 0;
+      const BATCH_SIZE = 400; // Firebase 每批次最多 500 条
+
+      for (let batchStart = 0; batchStart < data.length; batchStart += BATCH_SIZE) {
+        const batch = data.slice(batchStart, batchStart + BATCH_SIZE);
+        const writeBatch = db.batch();
+        
+        for (const item of batch) {
+          const dup = allStudents.find(s =>
+            (item.idNumber && s.idNumber === item.idNumber) ||
+            (s.name === item.name && s.className === item.className)
+          );
+          if (dup) { skipped++; }
+          else {
+            const docRef = db.collection('students').doc();
+            const doc = { name: item.name, className: item.className, createdAt: firebase.firestore.FieldValue.serverTimestamp() };
+            if (item.idNumber) doc.idNumber = item.idNumber;
+            if (item.studentId) doc.studentId = item.studentId;
+            writeBatch.set(docRef, doc);
+            imported++;
+          }
+        }
+        
+        try {
+          await writeBatch.commit();
+        } catch (e) { 
+          errors += batch.length;
+          console.error('Batch error:', e);
+        }
+        
+        const progress = Math.min(batchStart + BATCH_SIZE, data.length);
+        bar.style.width = Math.round((progress / data.length) * 100) + '%';
+        text.textContent = `导入中 ${progress}/${data.length}（已导入:${imported} 跳过重复:${skipped}）`;
+        
+        // 每批次间隔一小段时间，避免触发频率限制
+        if (batchStart + BATCH_SIZE < data.length) {
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+
+      text.textContent = `完成！导入 ${imported} 条，跳过重复 ${skipped} 条`;
+      showAlert(`学生导入完成：新增 ${imported}，跳过重复 ${skipped}，失败 ${errors}`, 'success', 'student-import-alert');
+      document.getElementById('student-import-preview').innerHTML = '';
+      window.pendingStudentData = null;
+      await loadData();
+    }
+
+    // ===== SCORE IMPORT =====
+    async function handleScoreFile(file) {
+      try {
+        showAlert('正在解析文件...', 'info', 'score-import-alert');
+        const rows = await parseExcelFile(file);
+        if (!rows.length) {
+          showAlert('文件中没有数据！', 'error', 'score-import-alert');
+          return;
+        }
+        // 科目列表
+        const subjectCols = ['语文','数学','英语','物理','化学','生物','历史','地理','政治'];
+        const rankCols = ['总分年级排名','语文年级排名','数学年级排名','英语年级排名','物理年级排名','化学年级排名','生物年级排名','历史年级排名','地理年级排名','政治年级排名'];
+
+        const normalized = rows.map(r => {
+          const subjects = {};
+          subjectCols.forEach(s => { if (r[s] !== '' && r[s] !== undefined) subjects[s] = Number(r[s]) || 0; });
+          const ranks = {};
+          rankCols.forEach(k => { if (r[k] !== '' && r[k] !== undefined) ranks[k] = Number(r[k]) || 0; });
+
+          return {
+            studentName: String(r['姓名'] || '').trim(),
+            studentId: String(r['身份证号'] || r['身份证号码'] || '').trim(),
+            className: String(r['班级'] || '').trim(),
+            year: String(r['学年'] || '').trim(),
+            examName: String(r['考试名称'] || '').trim(),
+            totalScore: Number(r['总分']) || 0,
+            subjects,
+            ranks,
+          };
+        }).filter(r => r.studentName && r.examName);
+
+        if (!normalized.length) {
+          showAlert('未识别到有效成绩数据，请检查列名（姓名、考试名称等）', 'error', 'score-import-alert');
+          return;
+        }
+
+        window.pendingScoreData = normalized;
+        showScorePreview(normalized, file.name);
+        showAlert(`已解析 ${normalized.length} 条成绩，请确认后导入`, 'success', 'score-import-alert');
+      } catch (err) {
+        showAlert('文件解析失败：' + err.message, 'error', 'score-import-alert');
+      }
+    }
+
+    function showScorePreview(data, filename) {
+      const preview = document.getElementById('score-import-preview');
+      // 统计考试场次
+      const exams = [...new Set(data.map(r => r.year + ' ' + r.examName))];
+      preview.innerHTML = `
+        <div style="margin-top:16px; border:1px solid var(--border); border-radius:10px; overflow:hidden;">
+          <div style="background:var(--bg); padding:12px 16px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div>
+              <span style="font-weight:600;">📄 ${filename}（共 ${data.length} 条）</span><br>
+              <span style="font-size:0.8rem; color:var(--text-muted);">包含考试：${exams.slice(0,5).join('、')}${exams.length>5?'...':''}</span>
+            </div>
+            <button class="btn btn-success" onclick="doImportScores()">
+              ✅ 确认导入 ${data.length} 条成绩
+            </button>
+          </div>
+          <div class="data-table-wrap" style="max-height:220px;">
+            <table>
+              <thead><tr><th>姓名</th><th>学年</th><th>考试名称</th><th>班级</th><th>总分</th></tr></thead>
+              <tbody>
+                ${data.slice(0,8).map(r=>`<tr><td>${r.studentName}</td><td>${r.year}</td><td>${r.examName}</td><td>${r.className}</td><td>${r.totalScore}</td></tr>`).join('')}
+                ${data.length>8?`<tr><td colspan="5" style="text-align:center;color:var(--text-muted);">...还有 ${data.length-8} 条</td></tr>`:''}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    async function doImportScores() {
+      const data = window.pendingScoreData;
+      if (!data || !data.length) return;
+
+      const bar = document.getElementById('score-progress-bar');
+      const text = document.getElementById('score-progress-text');
+      const progressWrap = document.getElementById('score-import-progress');
+      progressWrap.style.display = 'block';
+      bar.style.width = '0%';
+
+      let imported = 0, skipped = 0, errors = 0;
+      const BATCH_SIZE = 400; // Firebase 每批次最多 500 条
+
+      for (let batchStart = 0; batchStart < data.length; batchStart += BATCH_SIZE) {
+        const batch = data.slice(batchStart, batchStart + BATCH_SIZE);
+        const writeBatch = db.batch();
+        
+        for (const item of batch) {
+          // 按身份证号+考试名称去重（若无身份证则用姓名+考试名称+学年去重）
+          const dup = allScores.find(s => {
+            if (item.studentId && s.studentId) {
+              return s.studentId === item.studentId && s.examName === item.examName && s.year === item.year;
+            }
+            return s.studentName === item.studentName && s.examName === item.examName && s.year === item.year;
+          });
+          if (dup) { skipped++; }
+          else {
+            const docRef = db.collection('scores').doc();
+            writeBatch.set(docRef, {
+              studentId: item.studentId,
+              studentName: item.studentName,
+              className: item.className,
+              year: item.year,
+              examName: item.examName,
+              totalScore: item.totalScore,
+              subjects: item.subjects,
+              ranks: item.ranks,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            imported++;
+          }
+        }
+        
+        try {
+          await writeBatch.commit();
+        } catch (e) { 
+          errors += batch.length;
+          console.error('Batch error:', e);
+        }
+        
+        const progress = Math.min(batchStart + BATCH_SIZE, data.length);
+        bar.style.width = Math.round((progress / data.length) * 100) + '%';
+        text.textContent = `导入中 ${progress}/${data.length}（已导入:${imported} 跳过重复:${skipped}）`;
+        
+        if (batchStart + BATCH_SIZE < data.length) {
+          await new Promise(r => setTimeout(r, 200));
+        }
+      }
+
+      text.textContent = `完成！导入 ${imported} 条，跳过重复 ${skipped} 条`;
+      showAlert(`成绩导入完成：新增 ${imported}，跳过重复 ${skipped}，失败 ${errors}`, 'success', 'score-import-alert');
+      document.getElementById('score-import-preview').innerHTML = '';
+      window.pendingScoreData = null;
+      await loadData();
+    }
+
+    // Setup file upload
+    function setupFileUpload() {
+      setupDropZone('student-upload-zone', 'student-file-input', handleStudentFile);
+      setupDropZone('score-upload-zone', 'score-file-input', handleScoreFile);
+    }
+
+    // Legacy handleFile (kept for compatibility)
+    async function handleFile(file) {
+      await handleStudentFile(file);
+    }
+
+    // Handle file (old - parse CSV fallback)
+    async function handleFile(file) {
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          let data;
+          if (file.name.endsWith('.json')) {
+            data = JSON.parse(e.target.result);
+          } else if (file.name.endsWith('.csv')) {
+            data = parseCSV(e.target.result);
+          } else {
+            showAlert('不支持的文件格式，请上传 JSON 或 CSV 文件', 'error', 'import-alert');
+            return;
+          }
+
+          if (!Array.isArray(data)) {
+            data = [data];
+          }
+
+          // Show preview
+          showImportPreview(data, file.name);
+
+        } catch (error) {
+          console.error('Error parsing file:', error);
+          showAlert('文件解析失败：' + error.message, 'error', 'import-alert');
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Parse CSV
+    function parseCSV(text) {
+      const lines = text.split('\n').filter(l => l.trim());
+      if (lines.length < 2) return [];
+
+      const headers = lines[0].split(',').map(h => h.trim().replace(/"/g, ''));
+      const data = [];
+
+      for (let i = 1; i < lines.length; i++) {
+        const values = lines[i].split(',').map(v => v.trim().replace(/"/g, ''));
+        const obj = {};
+        headers.forEach((h, idx) => {
+          obj[h] = values[idx] || '';
+        });
+        data.push(obj);
+      }
+
+      return data;
+    }
+
+    // Show import preview
+    function showImportPreview(data, filename) {
+      const preview = document.getElementById('import-preview');
+      const progress = document.getElementById('import-progress');
+
+      preview.innerHTML = `
+        <div class="section-card" style="margin-top:16px;">
+          <h3>📋 导入预览 - ${filename}</h3>
+          <p>共发现 <strong>${data.length}</strong> 条记录</p>
+          <div class="data-table-wrap" style="max-height:200px; margin-top:12px;">
+            <table>
+              <thead><tr>${Object.keys(data[0] || {}).map(k => `<th>${k}</th>`).join('')}</tr></thead>
+              <tbody>
+                ${data.slice(0, 5).map(row => 
+                  `<tr>${Object.values(row).map(v => `<td>${v}</td>`).join('')}</tr>`
+                ).join('')}
+              </tbody>
+            </table>
+          </div>
+          ${data.length > 5 ? '<p style="margin-top:8px; color:var(--text-muted);">仅显示前5条...</p>' : ''}
+          <div class="btn-group" style="margin-top:16px;">
+            <button class="btn btn-success" onclick="importData('${filename}')">
+              确认导入 ${data.length} 条记录
+            </button>
+          </div>
+        </div>
+      `;
+
+      // Store data for import
+      window.pendingImportData = data;
+      window.pendingImportFilename = filename;
+    }
+
+    // Import data
+    async function importData(filename) {
+      const data = window.pendingImportData;
+      if (!data || data.length === 0) return;
+
+      const progress = document.getElementById('import-progress');
+      const bar = document.getElementById('progress-bar');
+      const text = document.getElementById('progress-text');
+
+      progress.style.display = 'block';
+      bar.style.width = '0%';
+      text.textContent = '准备导入...';
+
+      const isStudentData = data[0] && ('name' in data[0] || 'idNumber' in data[0]);
+      const collection = isStudentData ? 'students' : 'scores';
+      let imported = 0;
+      let errors = 0;
+
+      for (let i = 0; i < data.length; i++) {
+        try {
+          const item = data[i];
+          
+          if (isStudentData) {
+            // Check for duplicates
+            const exists = allStudents.find(s => s.idNumber === item.idNumber);
+            if (!exists) {
+              await db.collection('students').add({
+                name: item.name || item.姓名 || '',
+                idNumber: item.idNumber || item.身份证号 || '',
+                className: item.className || item.班级 || '',
+                studentId: item.studentId || item.学号 || '',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+              });
+              imported++;
+            }
+          } else {
+            await db.collection('scores').add({
+              ...item,
+              createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            imported++;
+          }
+
+          const percent = Math.round(((i + 1) / data.length) * 100);
+          bar.style.width = percent + '%';
+          text.textContent = `正在导入... ${i + 1}/${data.length}`;
+
+        } catch (error) {
+          errors++;
+          console.error('Import error:', error);
+        }
+      }
+
+      text.textContent = `导入完成！成功: ${imported}, 失败: ${errors}`;
+      
+      if (errors === 0) {
+        showAlert(`成功导入 ${imported} 条记录！`, 'success', 'import-alert');
+      } else {
+        showAlert(`导入完成！成功: ${imported}, 失败: ${errors}`, 'info', 'import-alert');
+      }
+
+      // Clear preview
+      document.getElementById('import-preview').innerHTML = '';
+      window.pendingImportData = null;
+
+      // Reload data
+      await loadData();
+    }
+
+    // Export data
+    function exportData(type) {
+      let data;
+      let filename;
+
+      if (type === 'students') {
+        data = allStudents.map(s => ({
+          name: s.name,
+          idNumber: s.idNumber,
+          className: s.className,
+          studentId: s.studentId
+        }));
+        filename = 'students.json';
+      } else if (type === 'scores') {
+        data = allScores.map(s => {
+          const student = allStudents.find(st => st.idNumber === s.studentId);
+          return {
+            studentName: student?.name || '',
+            studentId: s.studentId,
+            examName: s.examName,
+            year: s.year,
+            date: s.date,
+            totalScore: s.totalScore,
+            subjects: s.subjects,
+            classRank: s.classRank,
+            gradeRank: s.gradeRank
+          };
+        });
+        filename = 'scores.json';
+      } else {
+        data = {
+          students: allStudents.map(s => ({
+            name: s.name,
+            idNumber: s.idNumber,
+            className: s.className,
+            studentId: s.studentId
+          })),
+          scores: allScores,
+          exportedAt: new Date().toISOString()
+        };
+        filename = 'all_data.json';
+      }
+
+      // Download
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      showAlert(`已导出 ${data.length || data.students?.length || 0} 条记录`, 'success');
+    }
+
+    // Export combined data for query page (students.json + scores.json)
+    function exportQueryData() {
+      if (allStudents.length === 0 && allScores.length === 0) {
+        showAlert('暂无数据可导出，请先导入数据', 'error');
+        return;
+      }
+
+      // Create students.json
+      const studentsClean = allStudents.map(s => ({
+        name: s.name,
+        idNumber: s.idNumber || '',
+        className: s.className || ''
+      }));
+      const studentsBlob = new Blob([JSON.stringify(studentsClean, null, 2)], { type: 'application/json' });
+
+      // Create scores.json
+      const scoresClean = allScores.map(s => ({
+        studentId: s.studentId || '',
+        studentName: s.studentName || '',
+        className: s.className || '',
+        year: s.year || '',
+        examName: s.examName || '',
+        totalScore: s.totalScore || 0,
+        subjects: s.subjects || {},
+        ranks: s.ranks || {}
+      }));
+      const scoresBlob = new Blob([JSON.stringify(scoresClean, null, 2)], { type: 'application/json' });
+
+      // Download students.json
+      downloadBlob(studentsBlob, 'students.json');
+      setTimeout(() => downloadBlob(scoresBlob, 'scores.json'), 300);
+
+      showAlert(`已准备好查询数据文件（students.json ${studentsClean.length}条，scores.json ${scoresClean.length}条）<br>请将这两个文件上传到查询页面同目录`, 'success');
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Logout
+    async function logout() {
+      try {
+        await auth.signOut();
+        window.location.href = 'login.html';
+      } catch (error) {
+        console.error('Logout error:', error);
+      }
+    }
+
+    // Show alert
+    function showAlert(message, type = 'info', targetId = 'score-alert') {
+      const alert = document.getElementById(targetId);
+      alert.innerHTML = `
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          ${type === 'success' ? '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>' : 
+            type === 'error' ? '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>' :
+            '<circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>'}
+        </svg>
+        ${message}
+      `;
+      alert.className = `alert alert-${type} show`;
+
+      setTimeout(() => {
+        alert.classList.remove('show');
+      }, 5000);
+    }
+
+    // Close modal
+    function closeModal(id) {
+      document.getElementById(id).classList.remove('show');
+    }
+
+    // Close modal on overlay click
+    document.querySelectorAll('.modal-overlay').forEach(overlay => {
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          overlay.classList.remove('show');
+        }
+      });
+    });
+  </script>
+</body>
+</html>
