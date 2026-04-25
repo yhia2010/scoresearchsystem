@@ -1257,23 +1257,7 @@
 
 
 
-      // Populate year filter
-
-      const years = [...new Set(allScores.map(s => s.year).filter(Boolean))].sort().reverse();
-
-      const yearFilter = document.getElementById('year-filter');
-
-      years.forEach(year => {
-
-        const option = document.createElement('option');
-
-        option.value = year;
-
-        option.textContent = year;
-
-        yearFilter.appendChild(option);
-
-      });
+      // Year filter removed from UI, no longer needed
 
     }
 
