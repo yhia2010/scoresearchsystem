@@ -96,6 +96,7 @@
     @keyframes pulse { 0%,100%{ opacity:1; } 50%{ opacity:0.6; } }
 
     .anim-fade-up { animation: fadeInUp 0.5s ease-out both; }
+
     .anim-fade { animation: fadeIn 0.4s ease-out both; }
 
 
@@ -988,6 +989,7 @@
 
         </div>
 
+
         <button id="query-btn" class="btn btn-primary btn-full">
 
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1357,67 +1359,42 @@
     // Perform query
 
     function performQuery() {
-
       const idInput = document.getElementById('id-input').value.trim();
-
       const nameInput = document.getElementById('name-input').value.trim();
 
       if (!nameInput) {
-
         showError('请输入学生姓名');
-
         return;
-
       }
 
       let student = null;
 
       if (idInput) {
-
         student = allStudents.find(s => s.idNumber === idInput);
-
         if (student && student.name !== nameInput) {
-
           showError('身份证号与姓名不匹配，请检查输入');
-
           return;
-
         }
-
       }
 
       if (!student) {
-
         const exactMatch = allStudents.filter(s => s.name === nameInput);
-
         if (exactMatch.length === 1) {
-
           student = exactMatch[0];
-
         } else if (exactMatch.length > 1) {
-
           showError(`找到 ${exactMatch.length} 名同名学生，请输入身份证号区分`);
-
           return;
-
         }
-
       }
 
       if (!student) {
-
         showError('未找到该学生，请检查姓名是否正确');
-
         return;
-
       }
 
       currentStudent = student;
-
       const scores = allScores.filter(s => s.studentId === student.idNumber);
-
       displayResults(student, scores);
-
     }
 
     // Display results(student, scores) {
@@ -1485,67 +1462,37 @@
       const summaryGrid = document.getElementById('summary-grid');
 
       if (scores.length > 0) {
-
         const statScores = scores.filter(s => !isFromGaoYiShang(s.examName));
-
         const statCount = statScores.length;
-
         const sortedByOrder = [...scores].sort((a, b) => getExamOrder(a.examName) - getExamOrder(b.examName));
-
         const latest = sortedByOrder[sortedByOrder.length - 1];
-
         const best = statScores.length > 0 ? statScores.reduce((a, b) => (a.totalScore || 0) > (b.totalScore || 0) ? a : b) : null;
-
         const avg = statScores.length > 0 ? statScores.reduce((sum, s) => sum + (s.totalScore || 0), 0) / statScores.length : 0;
-
         const bestRankRecord = statScores.length > 0 ? statScores.reduce((a, b) => { const ra = a.ranks?.['总分年级排名'] ?? 9999; const rb = b.ranks?.['总分年级排名'] ?? 9999; return ra < rb ? a : b; }) : null;
-
         const bestRank = bestRankRecord?.ranks?.['总分年级排名'];
 
         summaryGrid.innerHTML = `
-
           <div class="summary-card">
-
             <div class="label">最新总分</div>
-
             <div class="value">${(latest.totalScore || 0).toFixed(0)}</div>
-
             <div class="sub">${latest.examName || latest.year}</div>
-
           </div>
-
           <div class="summary-card green">
-
             <div class="label">最高总分</div>
-
             <div class="value">${best ? (best.totalScore || 0).toFixed(0) : 'N/A'}</div>
-
             <div class="sub">${best ? (best.examName || best.year) : '无'}</div>
-
           </div>
-
           <div class="summary-card amber">
-
             <div class="label">平均总分</div>
-
             <div class="value">${statCount > 0 ? avg.toFixed(0) : 'N/A'}</div>
-
             <div class="sub">${statCount > 0 ? statCount + '次考试' : '无'}</div>
-
           </div>
-
           <div class="summary-card sky">
-
             <div class="label">年级排名</div>
-
             <div class="value">${bestRank || 'N/A'}</div>
-
             <div class="sub">最佳排名</div>
-
           </div>
-
         `;
-
       } else {
 
         summaryGrid.innerHTML = '<div class="empty-state"><p>暂无成绩记录</p></div>';
@@ -1577,297 +1524,168 @@
 
 
     // 考试顺序：严格按时间顺序，从高一上学期期中到最后一次考试
-
     const EXAM_ORDER = [
-
       '高一上学期期中考试', '高一上学期期末考试',
-
       '高一下学期期中考试', '高一下学期期末考试',
-
       '高二上学期期中考试', '高二上学期期末考试',
-
       '高二下学期期中考试', '高二下学期期末考试',
-
       '高三上学期八月联考', '高三上学期宝一模', '高三上学期十二月联考', '高三上学期期末考试',
-
       '高三下学期深一模'
-
     ];
-
     function getExamOrder(examName) {
-
       const idx = EXAM_ORDER.indexOf(examName);
-
       return idx >= 0 ? idx : 999;
-
     }
-
     // 高一上的两次考试不参与统计
-
     const EXAM_EXCLUDE = new Set(['高一上学期期中考试', '高一上学期期末考试']);
-
     function isFromGaoYiShang(examName) {
-
       return EXAM_EXCLUDE.has(examName);
-
     }
 
     // Display score table
-
     function displayScoreTable(scores) {
-
       const container = document.getElementById('table-container');
-
       if (scores.length === 0) {
-
         container.innerHTML = '<div class="empty-state"><p>暂无成绩数据</p></div>';
-
         return;
-
       }
 
       // 按高一→高三、上学期→下学期排序
-
       const sorted = [...scores].sort((a, b) => {
-
         const orderA = getExamOrder(a.examName);
-
         const orderB = getExamOrder(b.examName);
-
         if (orderA !== orderB) return orderA - orderB;
-
         // 同学期内再按考试名称字母序
-
         return (a.examName || '').localeCompare(b.examName || '');
-
       });
 
       // 收集所有出现的科目（按 SUBJECTS 顺序）
-
       const subjectOrder = Object.keys(SUBJECTS);
-
       const allSubjectsSet = new Set();
-
       sorted.forEach(s => {
-
         if (s.subjects) Object.keys(s.subjects).forEach(sub => allSubjectsSet.add(sub));
-
       });
-
       // 按预设顺序排列
-
       const allSubjects = subjectOrder.filter(s => allSubjectsSet.has(s));
-
       // 追加未在预设中出现的科目
-
       allSubjectsSet.forEach(s => { if (!allSubjects.includes(s)) allSubjects.push(s); });
 
       // 收集所有出现的各科年级排名列（如"语文年级排名"）
-
       const rankCols = new Set();
-
       sorted.forEach(s => {
-
         if (s.ranks) {
-
           Object.keys(s.ranks).forEach(k => {
-
             if (k !== '总分年级排名' && k !== '班级排名') rankCols.add(k);
-
           });
-
         }
-
       });
 
       // 构建表头
-
       let html = '<div class="table-wrap" id="score-table-wrap"><table><thead><tr>';
-
       html += '<th>考试名称</th>';
-
       allSubjects.forEach(sub => {
-
         html += `<th>${sub}</th>`;
-
         // 如果有该科年级排名列则紧跟
-
         const rankKey = sub + '年级排名';
-
         if (rankCols.has(rankKey)) html += `<th>${sub}排名</th>`;
-
       });
-
       html += '<th>总分</th><th>年级排名</th></tr></thead><tbody>';
 
       sorted.forEach(score => {
-
         html += '<tr>';
-
         html += `<td>${score.examName || '未知考试'}</td>`;
-
         allSubjects.forEach(sub => {
-
           const val = score.subjects?.[sub];
-
           html += val !== undefined
-
             ? `<td><span class="${getScoreClass(val)}">${Number(val).toFixed(0)}</span></td>`
-
             : '<td>-</td>';
-
           const rankKey = sub + '年级排名';
-
           if (rankCols.has(rankKey)) {
-
             const rv = score.ranks?.[rankKey];
-
             html += rv !== undefined ? `<td><span class="rank-tag">${rv}</span></td>` : '<td>-</td>';
-
           }
-
         });
-
         html += `<td><strong>${Number(score.totalScore || 0).toFixed(0)}</strong></td>`;
-
         const gradeRank = score.ranks?.['总分年级排名'] || score.gradeRank;
-
         html += gradeRank ? `<td><span class="rank-tag">${gradeRank}</span></td>` : '<td>-</td>';
-
         html += '</tr>';
-
       });
 
       html += '</tbody></table></div>';
-
       html += '<div class="scroll-hint" id="table-scroll-hint"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>左右滑动查看更多</div>';
 
       // 导出 Excel 按钮
-
       html += `<div style="margin-top:16px;text-align:right;">
-
         <button onclick="exportToExcel()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 18px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:0.875rem;cursor:pointer;font-weight:500;">
-
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-
           导出成绩Excel
-
         </button>
-
       </div>`;
 
       container.innerHTML = html;
 
       setTimeout(() => {
-
         const tableWrap = document.getElementById('score-table-wrap');
-
         const hint = document.getElementById('table-scroll-hint');
-
         if (tableWrap && tableWrap.scrollWidth > tableWrap.clientWidth) {
-
           hint.classList.remove('hidden');
-
         } else if (hint) {
-
           hint.classList.add('hidden');
-
         }
-
       }, 100);
-
     }
 
     // 导出成绩 Excel
-
     function exportToExcel() {
-
       if (!currentStudent) return;
-
       const scores = allScores.filter(s => s.studentId === currentStudent.idNumber);
-
       if (scores.length === 0) { alert('暂无成绩数据可导出'); return; }
 
       const sorted = [...scores].sort((a, b) =>
-
         getExamOrder(a.examName) - getExamOrder(b.examName)
-
       );
 
       const subjectOrder = Object.keys(SUBJECTS);
-
       const allSubjectsSet = new Set();
-
       sorted.forEach(s => { if (s.subjects) Object.keys(s.subjects).forEach(sub => allSubjectsSet.add(sub)); });
-
       const allSubjects = subjectOrder.filter(s => allSubjectsSet.has(s));
-
       allSubjectsSet.forEach(s => { if (!allSubjects.includes(s)) allSubjects.push(s); });
 
       const rankCols = new Set();
-
       sorted.forEach(s => {
-
         if (s.ranks) Object.keys(s.ranks).forEach(k => {
-
           if (k !== '总分年级排名' && k !== '班级排名') rankCols.add(k);
-
         });
-
       });
 
       // 构建表头
-
       const headers = ['考试名称'];
-
       allSubjects.forEach(sub => {
-
         headers.push(sub);
-
         if (rankCols.has(sub + '年级排名')) headers.push(sub + '排名');
-
       });
-
       headers.push('总分', '年级排名');
 
       // 构建数据
-
       const dataRows = sorted.map(score => {
-
         const row = [score.examName || '未知考试'];
-
         allSubjects.forEach(sub => {
-
           const val = score.subjects?.[sub];
-
           row.push(val !== undefined ? Number(val) : '');
-
           if (rankCols.has(sub + '年级排名')) {
-
             row.push(score.ranks?.[sub + '年级排名'] ?? '');
-
           }
-
         });
-
         row.push(score.totalScore || '');
-
         row.push(score.ranks?.['总分年级排名'] ?? '');
-
         return row;
-
       });
 
       // 用 SheetJS 生成 xlsx
-
       const ws = XLSX.utils.aoa_to_sheet([headers, ...dataRows]);
-
       const wb = XLSX.utils.book_new();
-
       XLSX.utils.book_append_sheet(wb, ws, '成绩单');
-
       XLSX.writeFile(wb, currentStudent.name + '_成绩单.xlsx');
-
     }
 
 
@@ -1907,15 +1725,10 @@
 
 
       const sorted = [...scores].sort((a, b) => {
-
         const orderA = getExamOrder(a.examName);
-
         const orderB = getExamOrder(b.examName);
-
         if (orderA !== orderB) return orderA - orderB;
-
         return (a.examName || '').localeCompare(b.examName || '');
-
       });
 
 
@@ -1973,7 +1786,6 @@
             y: {
 
               beginAtZero: true,
-
               reverse: true,  // 排名越小显示在上方
 
               grid: { color: 'rgba(0,0,0,0.05)' }
@@ -1993,8 +1805,6 @@
       });
 
     }
-
-
 
 
 
@@ -2047,11 +1857,8 @@
 
 
         const sorted = [...scores].sort((a, b) =>
-
           getExamOrder(a.examName) - getExamOrder(b.examName)
-
         );
-
 
 
 
@@ -2143,9 +1950,7 @@
 
 
       const sorted = [...rankData].sort((a, b) =>
-
         getExamOrder(a.examName) - getExamOrder(b.examName)
-
       );
 
 
