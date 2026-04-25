@@ -1619,138 +1619,170 @@
 
 
 
+    // 学期排序权重：高一上=1, 高一下=2, 高二上=3, 高二下=4, 高三上=5, 高三下=6
+    function getYearOrder(year) {
+      const map = {
+        '高一上学期': 1, '高一下学期': 2,
+        '高二上学期': 3, '高二下学期': 4,
+        '高三上学期': 5, '高三下学期': 6
+      };
+      return map[year] || 99;
+    }
+
     // Display score table
-
     function displayScoreTable(scores) {
-
       const container = document.getElementById('table-container');
-
       if (scores.length === 0) {
-
         container.innerHTML = '<div class="empty-state"><p>暂无成绩数据</p></div>';
-
         return;
-
       }
 
-
-
+      // 按高一→高三、上学期→下学期排序
       const sorted = [...scores].sort((a, b) => {
-
-        const dateA = new Date(a.date || a.year);
-
-        const dateB = new Date(b.date || b.year);
-
-        return dateA - dateB;
-
+        const orderA = getYearOrder(a.year);
+        const orderB = getYearOrder(b.year);
+        if (orderA !== orderB) return orderA - orderB;
+        // 同学期内再按考试名称字母序
+        return (a.examName || '').localeCompare(b.examName || '');
       });
 
-
-
-      // Get all subjects
-
-      const allSubjects = new Set();
-
+      // 收集所有出现的科目（按 SUBJECTS 顺序）
+      const subjectOrder = Object.keys(SUBJECTS);
+      const allSubjectsSet = new Set();
       sorted.forEach(s => {
+        if (s.subjects) Object.keys(s.subjects).forEach(sub => allSubjectsSet.add(sub));
+      });
+      // 按预设顺序排列
+      const allSubjects = subjectOrder.filter(s => allSubjectsSet.has(s));
+      // 追加未在预设中出现的科目
+      allSubjectsSet.forEach(s => { if (!allSubjects.includes(s)) allSubjects.push(s); });
 
-        if (s.subjects) {
-
-          Object.keys(s.subjects).forEach(sub => allSubjects.add(sub));
-
+      // 收集所有出现的各科年级排名列（如"语文年级排名"）
+      const rankCols = new Set();
+      sorted.forEach(s => {
+        if (s.ranks) {
+          Object.keys(s.ranks).forEach(k => {
+            if (k !== '总分年级排名' && k !== '班级排名') rankCols.add(k);
+          });
         }
-
       });
 
-
-
+      // 构建表头
       let html = '<div class="table-wrap" id="score-table-wrap"><table><thead><tr>';
-
-      html += '<th>考试名称</th><th>学年</th><th>日期</th>';
-
+      html += '<th>考试名称</th>';
       allSubjects.forEach(sub => {
-
         html += `<th>${sub}</th>`;
-
+        // 如果有该科年级排名列则紧跟
+        const rankKey = sub + '年级排名';
+        if (rankCols.has(rankKey)) html += `<th>${sub}排名</th>`;
       });
-
       html += '<th>总分</th><th>年级排名</th></tr></thead><tbody>';
 
-
-
       sorted.forEach(score => {
-
         html += '<tr>';
-
         html += `<td>${score.examName || '未知考试'}</td>`;
-
-        html += `<td>${score.year || 'N/A'}</td>`;
-
-        html += `<td>${score.date || score.year}</td>`;
-
-        
-
         allSubjects.forEach(sub => {
-
           const val = score.subjects?.[sub];
-
-          if (val !== undefined) {
-
-            html += `<td><span class="${getScoreClass(val)}">${val.toFixed(0)}</span></td>`;
-
-          } else {
-
-            html += '<td>-</td>';
-
+          html += val !== undefined
+            ? `<td><span class="${getScoreClass(val)}">${Number(val).toFixed(0)}</span></td>`
+            : '<td>-</td>';
+          const rankKey = sub + '年级排名';
+          if (rankCols.has(rankKey)) {
+            const rv = score.ranks?.[rankKey];
+            html += rv !== undefined ? `<td><span class="rank-tag">${rv}</span></td>` : '<td>-</td>';
           }
-
         });
-
-        
-
-        html += `<td><strong>${(score.totalScore || 0).toFixed(0)}</strong></td>`;
-
-        html += `<td>${score.ranks?.['总分年级排名'] || score.classRank ? `<span class="rank-tag">${score.ranks?.['总分年级排名'] || score.classRank}</span>` : '-'}</td>`;
-
+        html += `<td><strong>${Number(score.totalScore || 0).toFixed(0)}</strong></td>`;
+        const gradeRank = score.ranks?.['总分年级排名'] || score.gradeRank;
+        html += gradeRank ? `<td><span class="rank-tag">${gradeRank}</span></td>` : '<td>-</td>';
         html += '</tr>';
-
       });
 
-
-
       html += '</tbody></table></div>';
-
-      
-
-      // Add scroll hint
-
       html += '<div class="scroll-hint" id="table-scroll-hint"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m9 18 6-6-6-6"/></svg>左右滑动查看更多</div>';
 
-
+      // 导出 Excel 按钮
+      html += `<div style="margin-top:16px;text-align:right;">
+        <button onclick="exportToExcel()" style="display:inline-flex;align-items:center;gap:6px;padding:8px 18px;background:var(--primary);color:#fff;border:none;border-radius:8px;font-size:0.875rem;cursor:pointer;font-weight:500;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          导出成绩Excel
+        </button>
+      </div>`;
 
       container.innerHTML = html;
 
-
-
-      // Check if table needs scroll hint
-
       setTimeout(() => {
-
         const tableWrap = document.getElementById('score-table-wrap');
-
         const hint = document.getElementById('table-scroll-hint');
-
         if (tableWrap && tableWrap.scrollWidth > tableWrap.clientWidth) {
-
           hint.classList.remove('hidden');
-
         } else if (hint) {
-
           hint.classList.add('hidden');
-
         }
-
       }, 100);
+    }
 
+    // 导出成绩 Excel
+    function exportToExcel() {
+      if (!currentStudent) return;
+      const scores = allScores.filter(s =>
+        s.studentId === currentStudent.idNumber || s.studentName === currentStudent.name
+      );
+      if (scores.length === 0) { alert('暂无成绩数据可导出'); return; }
+
+      const sorted = [...scores].sort((a, b) => {
+        const orderA = getYearOrder(a.year);
+        const orderB = getYearOrder(b.year);
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.examName || '').localeCompare(b.examName || '');
+      });
+
+      const subjectOrder = Object.keys(SUBJECTS);
+      const allSubjectsSet = new Set();
+      sorted.forEach(s => { if (s.subjects) Object.keys(s.subjects).forEach(sub => allSubjectsSet.add(sub)); });
+      const allSubjects = subjectOrder.filter(s => allSubjectsSet.has(s));
+      allSubjectsSet.forEach(s => { if (!allSubjects.includes(s)) allSubjects.push(s); });
+
+      const rankCols = new Set();
+      sorted.forEach(s => {
+        if (s.ranks) Object.keys(s.ranks).forEach(k => {
+          if (k !== '总分年级排名' && k !== '班级排名') rankCols.add(k);
+        });
+      });
+
+      // 构建表头行
+      const headers = ['考试名称'];
+      allSubjects.forEach(sub => {
+        headers.push(sub);
+        if (rankCols.has(sub + '年级排名')) headers.push(sub + '年级排名');
+      });
+      headers.push('总分', '年级排名');
+
+      // 构建数据行
+      const rows = sorted.map(score => {
+        const row = [score.examName || '未知考试'];
+        allSubjects.forEach(sub => {
+          const val = score.subjects?.[sub];
+          row.push(val !== undefined ? Number(val).toFixed(0) : '');
+          if (rankCols.has(sub + '年级排名')) {
+            row.push(score.ranks?.[sub + '年级排名'] ?? '');
+          }
+        });
+        row.push(Number(score.totalScore || 0).toFixed(0));
+        row.push(score.ranks?.['总分年级排名'] || score.gradeRank || '');
+        return row;
+      });
+
+      // 转 CSV 并下载
+      const csvContent = [headers, ...rows]
+        .map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        .join('\n');
+      const BOM = '\uFEFF'; // UTF-8 BOM，Excel 正确识别中文
+      const blob = new Blob([BOM + csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = `${currentStudent.name}_成绩单.csv`;
+      link.click();
     }
 
 
@@ -1790,13 +1822,10 @@
 
 
       const sorted = [...scores].sort((a, b) => {
-
-        const dateA = new Date(a.date || a.year);
-
-        const dateB = new Date(b.date || b.year);
-
-        return dateA - dateB;
-
+        const orderA = getYearOrder(a.year);
+        const orderB = getYearOrder(b.year);
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.examName || '').localeCompare(b.examName || '');
       });
 
 
@@ -1921,15 +1950,15 @@
 
 
 
+
+
         const sorted = [...scores].sort((a, b) => {
-
-          const dateA = new Date(a.date || a.year);
-
-          const dateB = new Date(b.date || b.year);
-
-          return dateA - dateB;
-
+          const orderA = getYearOrder(a.year);
+          const orderB = getYearOrder(b.year);
+          if (orderA !== orderB) return orderA - orderB;
+          return (a.examName || '').localeCompare(b.examName || '');
         });
+
 
 
 
@@ -2020,13 +2049,10 @@
 
 
       const sorted = [...rankData].sort((a, b) => {
-
-        const dateA = new Date(a.date || a.year);
-
-        const dateB = new Date(b.date || b.year);
-
-        return dateA - dateB;
-
+        const orderA = getYearOrder(a.year);
+        const orderB = getYearOrder(b.year);
+        if (orderA !== orderB) return orderA - orderB;
+        return (a.examName || '').localeCompare(b.examName || '');
       });
 
 
