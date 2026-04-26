@@ -1388,8 +1388,20 @@
       }
 
       if (!student) {
-        showError('未找到该学生，请检查姓名是否正确');
-        return;
+        // students.json 中没有该学生，尝试从 scores.json 中按姓名查找
+        const nameMatches = allScores.filter(s => s.studentName === nameInput);
+        if (nameMatches.length > 0) {
+          // 构造虚拟学生对象（无身份证、无班级信息）
+          const firstMatch = nameMatches[0];
+          student = {
+            name: nameInput,
+            className: firstMatch.className || '未知班级',
+            idNumber: ''
+          };
+        } else {
+          showError('未找到该学生，请检查姓名是否正确');
+          return;
+        }
       }
 
       currentStudent = student;
