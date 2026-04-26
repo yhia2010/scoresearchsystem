@@ -1393,7 +1393,13 @@
       }
 
       currentStudent = student;
-      const scores = allScores.filter(s => s.studentId === student.idNumber);
+      // 优先按身份证号匹配；若身份证为空则按姓名匹配（兼容未录入身份证的学生）
+      let scores;
+      if (student.idNumber) {
+        scores = allScores.filter(s => s.studentId === student.idNumber || s.studentName === student.name);
+      } else {
+        scores = allScores.filter(s => s.studentName === student.name);
+      }
       displayResults(student, scores);
     }
 
@@ -1528,7 +1534,7 @@
       '高一下学期期中考试', '高一下学期期末考试',
       '高二上学期期中考试', '高二上学期期末考试',
       '高二下学期期中考试', '高二下学期期末考试',
-      '高三上学期八月联考', '高三上学期宝一模', '高三上学期十二月联考', '高三上学期期末考试',
+      '高三上学期高三八月联考', '高三上学期宝安区一模', '高三上学期十二月联考', '高三上学期期末考试',
       '高三下学期深一模'
     ];
     function getExamOrder(examName) {
@@ -1637,7 +1643,9 @@
     // 导出成绩 Excel
     function exportToExcel() {
       if (!currentStudent) return;
-      const scores = allScores.filter(s => s.studentId === currentStudent.idNumber);
+      const scores = currentStudent.idNumber
+        ? allScores.filter(s => s.studentId === currentStudent.idNumber || s.studentName === currentStudent.name)
+        : allScores.filter(s => s.studentName === currentStudent.name);
       if (scores.length === 0) { alert('暂无成绩数据可导出'); return; }
 
       const sorted = [...scores].sort((a, b) =>
